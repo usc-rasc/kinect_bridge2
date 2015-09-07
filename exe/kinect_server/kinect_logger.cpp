@@ -66,6 +66,7 @@ public:
     void run()
     {
         _ColorImageMsgPtr message_ptr;
+        _ColorImageMsgPtr cropped_message_ptr;
         while( running_ )
         {
             // if the output fifo is too full, wait for consumers to pop items off
@@ -83,8 +84,40 @@ public:
             {
 //                std::cout << "pulling color image" << std::endl;
                 kinect_device_.pullColorImage( message_ptr, "RGBA" );
+                message_ptr->header_.num_channels_ = 3;
 
-                output_fifo_.getHandle( atomics::HandleBase::NotifyType::DELAY_NOTIFY_ALL )->push_back( message_ptr );
+                // crop here
+
+                if( !cropped_message_ptr ) cropped_message_ptr = std::make_shared<_ColorImageMsg>();
+
+                uint16_t const crop_x = message_ptr->header_.width_ * 0.4f;
+                uint16_t const crop_y = message_ptr->header_.height_ * 0.25f;
+                uint16_t const crop_w = message_ptr->header_.width_ - ( 2.0f * crop_x );
+                uint16_t const crop_h = message_ptr->header_.height_ - ( crop_y + 0.8f*crop_y );
+
+                cropped_message_ptr->header_ = message_ptr->header_;
+                cropped_message_ptr->header_.width_ = crop_w;
+                cropped_message_ptr->header_.height_ = crop_h;
+                cropped_message_ptr->header_.encoding_ = "rgb";
+
+                cropped_message_ptr->payload_.allocate( cropped_message_ptr->header_.width_ * cropped_message_ptr->header_.height_ * cropped_message_ptr->header_.num_channels_ * cropped_message_ptr->header_.pixel_depth_ / 8 );
+
+                auto & input_bytes = message_ptr->payload_.payload_;
+                auto & output_bytes = cropped_message_ptr->payload_.payload_;
+
+                for( size_t row = crop_y; row < crop_y + crop_h; ++row )
+                {
+                    for( size_t col = crop_x; col < crop_x + crop_w; ++col )
+                    {
+                        // only copy relevant data
+                        size_t const input_idx = row * message_ptr->header_.width_ + col;
+                        size_t const output_idx = ( row - crop_y ) * crop_w + ( col - crop_x );
+                        // only copy RGB (we ignore A anyway)
+                        std::memcpy( output_bytes + 3 * output_idx, input_bytes + 4 * input_idx, 3 );
+                    }
+                }
+
+                output_fifo_.getHandle( atomics::HandleBase::NotifyType::DELAY_NOTIFY_ALL )->push_back( cropped_message_ptr );
             }
             catch( KinectException & e )
             {
