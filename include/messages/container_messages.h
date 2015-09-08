@@ -427,7 +427,6 @@ class TupleMessage
 public:
     typedef std::tuple<__Primary, __Others...> _Types;
 
-    uint32_t num_types_;
     _Types types_;
 
     TupleMessage()
@@ -588,8 +587,6 @@ public:
     typedef std::tuple<__Primary, __Others...> _Types;
 
     typedef std::shared_ptr<MultiMessage<__Primary, __Others...> > _Ptr;
-
-    uint32_t num_types_;
 
     template<class... __Args>
     MultiMessage( __Args&&... args )
