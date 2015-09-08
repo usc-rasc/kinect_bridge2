@@ -584,6 +584,7 @@ template<class __Primary, class... __Others>
 class MultiMessage : public __Primary, public __Others...
 {
 public:
+    typedef __Primary _Primary;
     typedef std::tuple<__Primary, __Others...> _Types;
 
     typedef std::shared_ptr<MultiMessage<__Primary, __Others...> > _Ptr;
@@ -670,6 +671,28 @@ public:
     void unpackAs( __Archive & archive )
     {
         unpackImpl<__Bases...>( archive );
+    }
+
+    template<class __Component>
+    __Component & getComponent()
+    {
+        return *static_cast<__Component *>( this );
+    }
+
+    template<class __Component>
+    __Component const & getComponent() const
+    {
+        return *static_cast<__Component const *>( this );
+    }
+
+    __Primary & getPrimary()
+    {
+        return getComponent<__Primary>();
+    }
+
+    __Primary const & getPrimary() const
+    {
+        return getComponent<__Primary>();
     }
 
     static std::string const & name()
