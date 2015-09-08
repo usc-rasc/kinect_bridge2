@@ -1,0 +1,8 @@
+*.swp
+*.swo
+*.vcxproj
+
+bin
+lib
+cmake
+deps/*
