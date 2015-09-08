@@ -93,4 +93,12 @@ foreach( executable ${executables} )
 				${dll}
 				$<TARGET_FILE_DIR:${executable}> )
 	endforeach()
+
+	file( GLOB poco_dbgs ${POCO_DLLDIR}/*.pdb )
+	foreach( dbg ${poco_dbgs} )
+		add_custom_command( TARGET ${executable} POST_BUILD
+				COMMAND ${CMAKE_COMMAND} -E copy_if_different
+				${dbg}
+				$<TARGET_FILE_DIR:${executable}> )
+	endforeach()
 endforeach()
