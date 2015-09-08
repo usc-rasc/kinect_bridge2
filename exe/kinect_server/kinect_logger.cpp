@@ -44,6 +44,7 @@ uint32_t num_color_ = 0;
 uint32_t num_depth_ = 0;
 uint32_t num_infrared_ = 0;
 uint32_t num_audio_ = 0;
+uint32_t num_bodies_ = 0;
 
 class ColorImageReadTask : public Poco::Runnable
 {
@@ -318,7 +319,6 @@ public:
     }
 };
 
-/*
 class BodiesReadTask : public Poco::Runnable
 {
 public:
@@ -369,7 +369,6 @@ public:
         }
     }
 };
-*/
 
 class ColorImageCompressTask : public Poco::Runnable
 {
@@ -597,7 +596,6 @@ public:
     }
 };
 
-/*
 class BodiesCompressTask : public Poco::Runnable
 {
 public:
@@ -652,7 +650,6 @@ public:
 //        std::cout << "!! BodiesCompressTask done" << std::endl;
     }
 };
-*/
 
 class WriteTask : public Poco::Runnable
 {
@@ -697,6 +694,7 @@ public:
             else if( compressed_message_ptr->header_.payload_type_ == "KinectDepthImageMessage" ) num_depth_ ++;
             else if( compressed_message_ptr->header_.payload_type_ == "KinectInfraredImageMessage" ) num_infrared_ ++;
             else if( compressed_message_ptr->header_.payload_type_ == "KinectAudioMessage" ) num_audio_ ++;
+            else if( compressed_message_ptr->header_.payload_type_ == "KinectBodiesMessage" ) num_bodies_ ++;
 
             compressed_message_ptr->pack( output_stream_ );
         }
@@ -728,7 +726,7 @@ int main()
     {
         try
         {
-            kinect_device.initialize();
+            kinect_device.initialize( true, true, true, true, true );
             break;
         }
         catch( KinectException & e )
@@ -750,7 +748,7 @@ int main()
     DepthImageCompressTask::_MessageCoder depth_image_message_coder;
     InfraredImageCompressTask::_MessageCoder infrared_image_message_coder;
     AudioCompressTask::_MessageCoder audio_message_coder( 1 );
-//    BodiesCompressTask::_MessageCoder bodies_message_coder;
+    BodiesCompressTask::_MessageCoder bodies_message_coder;
 
     // set threadpool sizes
     Poco::ThreadPool read_pool( 5, 5 );
@@ -762,7 +760,7 @@ int main()
     atomics::Wrapper<std::deque<_DepthImageMsgPtr> > depth_image_read_fifo;
     atomics::Wrapper<std::deque<_InfraredImageMsgPtr> > infrared_image_read_fifo;
     atomics::Wrapper<std::deque<_AudioMsgPtr> > audio_read_fifo;
-//    atomics::Wrapper<std::deque<_BodiesMsgPtr> > bodies_read_fifo;
+    atomics::Wrapper<std::deque<_BodiesMsgPtr> > bodies_read_fifo;
 
     atomics::Wrapper<std::deque<_CodedMsgPtr> > compress_fifo;
 
@@ -771,14 +769,14 @@ int main()
     DepthImageReadTask depth_image_read_task( depth_image_read_fifo, kinect_device );
     InfraredImageReadTask infrared_image_read_task( infrared_image_read_fifo, kinect_device );
     AudioReadTask audio_read_task( audio_read_fifo, kinect_device );
-//    BodiesReadTask bodies_read_task( bodies_read_fifo, kinect_device );
+    BodiesReadTask bodies_read_task( bodies_read_fifo, kinect_device );
 
     // declare compress tasks
     ColorImageCompressTask color_image_compress_task( color_image_read_fifo, compress_fifo, color_image_message_coder );
     DepthImageCompressTask depth_image_compress_task( depth_image_read_fifo, compress_fifo, depth_image_message_coder );
     InfraredImageCompressTask infrared_image_compress_task( infrared_image_read_fifo, compress_fifo, infrared_image_message_coder );
     AudioCompressTask audio_compress_task( audio_read_fifo, compress_fifo, audio_message_coder );
-//    BodiesCompressTask bodies_compress_task( bodies_read_fifo, compress_fifo, bodies_message_coder );
+    BodiesCompressTask bodies_compress_task( bodies_read_fifo, compress_fifo, bodies_message_coder );
 
     // declare output tasks
     WriteTask write_task( compress_fifo, output_stream );
@@ -792,13 +790,13 @@ int main()
     for( size_t i = 0; i < 2; ++i ) compress_pool.start( depth_image_compress_task );
     for( size_t i = 0; i < 2; ++i ) compress_pool.start( infrared_image_compress_task );
     for( size_t i = 0; i < 1; ++i ) compress_pool.start( audio_compress_task );
-//    for( size_t i = 0; i < 1; ++i ) compress_pool.start( bodies_compress_task );
+    for( size_t i = 0; i < 1; ++i ) compress_pool.start( bodies_compress_task );
 
     read_pool.start( color_image_read_task );
     read_pool.start( depth_image_read_task );
     read_pool.start( infrared_image_read_task );
     read_pool.start( audio_read_task );
-//    read_pool.start( bodies_read_task );
+    read_pool.start( bodies_read_task );
 
     // use the main thread to produce status updates while program is running
     std::streamsize last_size = 0;
@@ -806,7 +804,7 @@ int main()
     {
         std::streamsize current_size( output_stream.tellp() );
         std::cout << "Output MBytes: " << current_size / 1000000 << " (" << static_cast<int>( ( 1000.0 / 500.0 ) * ( current_size - last_size ) / 1000000 ) << " MB/sec)" << std::endl;
-        std::cout << num_color_ << " | " << num_depth_ << " | " << num_infrared_ << " | " << num_audio_ << std::endl;
+        std::cout << num_color_ << " | " << num_depth_ << " | " << num_infrared_ << " | " << num_audio_ << " | " << num_bodies_ << std::endl;
         last_size = current_size;
         std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
     }
@@ -819,9 +817,7 @@ int main()
     depth_image_read_task.running_ = false;
     infrared_image_read_task.running_ = false;
     audio_read_task.running_ = false;
-//    bodies_read_task.running_ = false;
-
-    // wait for tasks to stop
+    bodies_read_task.running_ = false;
     read_pool.joinAll();
 
     std::cout << "read threads stopped" << std::endl;
@@ -849,11 +845,11 @@ int main()
         audio_read_fifo.getCondition().notify_one();
     }
     std::cout << "compress audio task done" << std::endl;
-//    while( !bodies_read_fifo->empty() )
-//    {
-//        bodies_read_fifo.getCondition().notify_one();
-//    }
-//    std::cout << "compress bodies task done" << std::endl;
+    while( !bodies_read_fifo->empty() )
+    {
+        bodies_read_fifo.getCondition().notify_one();
+    }
+    std::cout << "compress bodies task done" << std::endl;
 
     std::cout << "compression threads stopped" << std::endl;
 
@@ -862,13 +858,13 @@ int main()
     depth_image_compress_task.running_ = false;
     infrared_image_compress_task.running_ = false;
     audio_compress_task.running_ = false;
-//    bodies_compress_task.running_ = false;
+    bodies_compress_task.running_ = false;
 
     color_image_read_fifo.getCondition().notify_all();
     depth_image_read_fifo.getCondition().notify_all();
     infrared_image_read_fifo.getCondition().notify_all();
     audio_read_fifo.getCondition().notify_all();
-//    bodies_read_fifo.getCondition().notify_all();
+    bodies_read_fifo.getCondition().notify_all();
 
     // wait for compression threads to stop
     compress_pool.joinAll();
