@@ -1,6 +1,12 @@
 # includes for this project
 include_directories( ${CMAKE_CURRENT_SOURCE_DIRECTORY} )
 
+include_directories( "${SPEECH_INCDIR}" )
+link_directories( "${SPEECH_LIBDIR}" )
+
+include_directories( "${KINECT_INCDIR}" )
+link_directories( "${KINECT_LIBDIR}" )
+
 include_directories( "${SNDFILE_INCDIR}" )
 link_directories( "${SNDFILE_LIBDIR}" )
 
@@ -10,11 +16,8 @@ link_directories( "${POCO_LIBDIR}" )
 include_directories( "${PNG_INCDIR}" )
 link_directories( "${PNG_LIBDIR}" )
 
-include_directories( "${KINECT_INCDIR}" )
-link_directories( "${KINECT_LIBDIR}" )
-
-add_executable( test_pack_as test_pack_as.cpp )
-target_link_libraries( test_pack_as ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
+#add_executable( test_pack_as test_pack_as.cpp )
+#target_link_libraries( test_pack_as ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
 
 add_executable( test_kinect_device_RGB test_kinect_device_RGB.cpp )
 target_link_libraries( test_kinect_device_RGB ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
@@ -36,12 +39,15 @@ target_link_libraries( kinect_logger ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${
 #
 #add_executable( test_kinect_device_png test_kinect_device_png.cpp )
 #target_link_libraries( test_kinect_device_png ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
-
-add_executable( test_kinect_device_gzip test_kinect_device_gzip.cpp )
-target_link_libraries( test_kinect_device_gzip ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
+#
+#add_executable( test_kinect_device_gzip test_kinect_device_gzip.cpp )
+#target_link_libraries( test_kinect_device_gzip ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
 
 add_executable( test_kinect_device_skeleton test_kinect_device_skeleton.cpp )
 target_link_libraries( test_kinect_device_skeleton ${POCO_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
+
+add_executable( test_kinect_device_speech test_kinect_device_speech.cpp )
+target_link_libraries( test_kinect_device_speech ${POCO_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
 
 #add_executable( kinect_server kinect_server.cpp kinect_server.rc )
 #
@@ -56,7 +62,7 @@ target_link_libraries( test_kinect_device_skeleton ${POCO_LIBS} ${KINECT_LIBS} k
 #target_link_libraries( kinect_server ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
 
 set( executables
-		test_pack_as
+#		test_pack_as
 		test_kinect_device_RGB
 		test_kinect_device_depth
 		test_kinect_device_infrared
@@ -64,8 +70,9 @@ set( executables
 		kinect_logger
 #		test_kinect_device_RGBA
 #		test_kinect_device_png
-		test_kinect_device_gzip
+#		test_kinect_device_gzip
 		test_kinect_device_skeleton
+		test_kinect_device_speech
 )
 
 # copy all DLLs alongside our exe
