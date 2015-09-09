@@ -2,6 +2,7 @@
 #define _MESSAGES_INPUTFILEDEVICE_H_
 
 #include <messages/container_messages.h>
+#include <messages/binary_message.h>
 
 #include <fstream>
 
