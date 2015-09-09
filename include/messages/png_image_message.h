@@ -48,8 +48,16 @@ public:
 
     uint8_t compression_level_;
 
+    PNGImageMessage()
+    :
+        _Message(),
+        compression_level_( 2 )
+    {
+        //
+    }
+
     template<class... __Args>
-    PNGImageMessage( uint8_t compression_level = 2,__Args&&... args )
+    PNGImageMessage( uint8_t compression_level, __Args&&... args )
     :
         _Message( std::forward<__Args>( args )... ),
         compression_level_( compression_level )
