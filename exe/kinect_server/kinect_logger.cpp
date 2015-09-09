@@ -1,6 +1,9 @@
 #include <iostream>
 #include <fstream>
 #include <thread>
+
+#include <kinect_common/kinect_device.h>
+
 #include <deque>
 #include <memory>
 #include <sstream>
@@ -16,8 +19,6 @@
 #include <messages/message_coder.h>
 #include <messages/binary_codec.h>
 #include <messages/gzip_codec.h>
-
-#include <kinect_common/kinect_device.h>
 
 #include <messages/png_image_message.h>
 #include <messages/wav_audio_message.h>
@@ -37,6 +38,9 @@ typedef std::shared_ptr<_AudioMsg> _AudioMsgPtr;
 typedef KinectBodiesMessage _BodiesMsg;
 typedef std::shared_ptr<_BodiesMsg> _BodiesMsgPtr;
 
+typedef KinectSpeechMessage _SpeechMsg;
+typedef std::shared_ptr<_SpeechMsg> _SpeechMsgPtr;
+
 typedef CodedMessage<> _CodedMsg;
 typedef std::shared_ptr<_CodedMsg> _CodedMsgPtr;
 
@@ -45,6 +49,7 @@ uint32_t num_depth_ = 0;
 uint32_t num_infrared_ = 0;
 uint32_t num_audio_ = 0;
 uint32_t num_bodies_ = 0;
+uint32_t num_speech_ = 0;
 
 class ColorImageReadTask : public Poco::Runnable
 {
@@ -370,6 +375,57 @@ public:
     }
 };
 
+class SpeechReadTask : public Poco::Runnable
+{
+public:
+    typedef atomics::Wrapper<std::deque<_SpeechMsgPtr> > _OutputFifo;
+
+    _OutputFifo & output_fifo_;
+    KinectDevice & kinect_device_;
+    bool running_;
+
+    SpeechReadTask( _OutputFifo & output_fifo, KinectDevice & kinect_device )
+    :
+        output_fifo_( output_fifo ),
+        kinect_device_( kinect_device ),
+        running_( true )
+    {
+        //
+    }
+
+    void run()
+    {
+        while( running_ )
+        {
+            // if the output fifo is too full, wait for consumers to pop items off
+            {
+                auto output_handle = output_fifo_.getHandle();
+
+                if( output_handle->size() >= 2*16 && output_handle.waitOn()->size() >= 2*16 )
+                {
+                    std::this_thread::sleep_for( std::chrono::milliseconds( 1000 / 35 ) );
+                    continue;
+                }
+            }
+
+
+            try
+            {
+//                std::cout << "pulling bodies" << std::endl;
+                _SpeechMsgPtr message_ptr;
+                kinect_device_.pullSpeech( message_ptr );
+                output_fifo_.getHandle( atomics::HandleBase::NotifyType::DELAY_NOTIFY_ALL )->push_back( message_ptr );
+            }
+            catch( KinectException & e )
+            {
+                std::this_thread::sleep_for( std::chrono::milliseconds( 1000 / 35 ) );
+                continue;
+            }
+
+        }
+    }
+};
+
 class ColorImageCompressTask : public Poco::Runnable
 {
 public:
@@ -651,6 +707,61 @@ public:
     }
 };
 
+class SpeechCompressTask : public Poco::Runnable
+{
+public:
+    typedef atomics::Wrapper<std::deque<_SpeechMsgPtr> > _InputFifo;
+    typedef atomics::Wrapper<std::deque<_CodedMsgPtr> > _OutputFifo;
+    typedef MessageCoder<BinaryCodec<> > _MessageCoder;
+
+    _InputFifo & input_fifo_;
+    _OutputFifo & output_fifo_;
+    _MessageCoder message_coder_;
+    bool running_;
+
+    SpeechCompressTask( _InputFifo & input_fifo, _OutputFifo & output_fifo, _MessageCoder & message_coder )
+    :
+        input_fifo_( input_fifo ),
+        output_fifo_( output_fifo ),
+        message_coder_( message_coder ),
+        running_( true )
+    {
+        //
+    }
+
+    void run()
+    {
+        while( running_ )
+        {
+            // if the output fifo is too full, wait for consumers to pop items off
+            {
+                auto output_handle = output_fifo_.getHandle();
+
+                if( output_handle->size() >= 2*32 && output_handle.waitOn()->size() >= 2*32 ) continue;
+            }
+
+            _SpeechMsgPtr raw_message_ptr;
+            // if the input fifo is empty, wait for producers to push items on
+            {
+                auto input_handle = input_fifo_.getHandle( atomics::HandleBase::NotifyType::DELAY_NOTIFY_ONE );
+
+                if( input_handle->empty() && input_handle.waitOn()->empty() ) continue;
+
+                raw_message_ptr = input_handle->front();
+                input_handle->pop_front();
+            }
+
+//            std::cout << "compressing bodies" << std::endl;
+
+            _CodedMsgPtr output_message_ptr = std::make_shared<_CodedMsg>( message_coder_.encode( *raw_message_ptr ) );
+
+            output_fifo_.getHandle( atomics::HandleBase::NotifyType::DELAY_NOTIFY_ONE )->push_back( output_message_ptr );
+        }
+
+//        std::cout << "!! SpeechCompressTask done" << std::endl;
+    }
+};
+
 class WriteTask : public Poco::Runnable
 {
 public:
@@ -695,6 +806,7 @@ public:
             else if( compressed_message_ptr->header_.payload_type_ == "KinectInfraredImageMessage" ) num_infrared_ ++;
             else if( compressed_message_ptr->header_.payload_type_ == "KinectAudioMessage" ) num_audio_ ++;
             else if( compressed_message_ptr->header_.payload_type_ == "KinectBodiesMessage" ) num_bodies_ ++;
+            else if( compressed_message_ptr->header_.payload_type_ == "KinectSpeechMessage" ) num_speech_ ++;
 
             compressed_message_ptr->pack( output_stream_ );
         }
@@ -749,10 +861,11 @@ int main()
     InfraredImageCompressTask::_MessageCoder infrared_image_message_coder;
     AudioCompressTask::_MessageCoder audio_message_coder( 1 );
     BodiesCompressTask::_MessageCoder bodies_message_coder;
+    SpeechCompressTask::_MessageCoder speech_message_coder;
 
     // set threadpool sizes
     Poco::ThreadPool read_pool( 5, 5 );
-    Poco::ThreadPool compress_pool( 8 + 2 + 2 + 1 + 1, 8 + 2 + 2 + 1 + 1 );
+    Poco::ThreadPool compress_pool( 8 + 2 + 2 + 1 + 1 + 1, 8 + 2 + 2 + 1 + 1 + 1 );
     Poco::ThreadPool write_pool( 1, 1 );
 
     // declare inter-thread message passing FIFOs
@@ -761,6 +874,7 @@ int main()
     atomics::Wrapper<std::deque<_InfraredImageMsgPtr> > infrared_image_read_fifo;
     atomics::Wrapper<std::deque<_AudioMsgPtr> > audio_read_fifo;
     atomics::Wrapper<std::deque<_BodiesMsgPtr> > bodies_read_fifo;
+    atomics::Wrapper<std::deque<_SpeechMsgPtr> > speech_read_fifo;
 
     atomics::Wrapper<std::deque<_CodedMsgPtr> > compress_fifo;
 
@@ -770,6 +884,7 @@ int main()
     InfraredImageReadTask infrared_image_read_task( infrared_image_read_fifo, kinect_device );
     AudioReadTask audio_read_task( audio_read_fifo, kinect_device );
     BodiesReadTask bodies_read_task( bodies_read_fifo, kinect_device );
+    SpeechReadTask speech_read_task( speech_read_fifo, kinect_device );
 
     // declare compress tasks
     ColorImageCompressTask color_image_compress_task( color_image_read_fifo, compress_fifo, color_image_message_coder );
@@ -777,6 +892,7 @@ int main()
     InfraredImageCompressTask infrared_image_compress_task( infrared_image_read_fifo, compress_fifo, infrared_image_message_coder );
     AudioCompressTask audio_compress_task( audio_read_fifo, compress_fifo, audio_message_coder );
     BodiesCompressTask bodies_compress_task( bodies_read_fifo, compress_fifo, bodies_message_coder );
+    SpeechCompressTask speech_compress_task( speech_read_fifo, compress_fifo, speech_message_coder );
 
     // declare output tasks
     WriteTask write_task( compress_fifo, output_stream );
@@ -791,12 +907,14 @@ int main()
     for( size_t i = 0; i < 2; ++i ) compress_pool.start( infrared_image_compress_task );
     for( size_t i = 0; i < 1; ++i ) compress_pool.start( audio_compress_task );
     for( size_t i = 0; i < 1; ++i ) compress_pool.start( bodies_compress_task );
+    for( size_t i = 0; i < 1; ++i ) compress_pool.start( speech_compress_task );
 
     read_pool.start( color_image_read_task );
     read_pool.start( depth_image_read_task );
     read_pool.start( infrared_image_read_task );
     read_pool.start( audio_read_task );
     read_pool.start( bodies_read_task );
+    read_pool.start( speech_read_task );
 
     // use the main thread to produce status updates while program is running
     std::streamsize last_size = 0;
@@ -804,7 +922,7 @@ int main()
     {
         std::streamsize current_size( output_stream.tellp() );
         std::cout << "Output MBytes: " << current_size / 1000000 << " (" << static_cast<int>( ( 1000.0 / 500.0 ) * ( current_size - last_size ) / 1000000 ) << " MB/sec)" << std::endl;
-        std::cout << num_color_ << " | " << num_depth_ << " | " << num_infrared_ << " | " << num_audio_ << " | " << num_bodies_ << std::endl;
+        std::cout << num_color_ << " | " << num_depth_ << " | " << num_infrared_ << " | " << num_audio_ << " | " << num_bodies_ << " | " << num_speech_ << std::endl;
         last_size = current_size;
         std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
     }
@@ -818,6 +936,7 @@ int main()
     infrared_image_read_task.running_ = false;
     audio_read_task.running_ = false;
     bodies_read_task.running_ = false;
+    speech_read_task.running_ = false;
     read_pool.joinAll();
 
     std::cout << "read threads stopped" << std::endl;
@@ -850,6 +969,11 @@ int main()
         bodies_read_fifo.getCondition().notify_one();
     }
     std::cout << "compress bodies task done" << std::endl;
+    while( !speech_read_fifo->empty() )
+    {
+        speech_read_fifo.getCondition().notify_one();
+    }
+    std::cout << "compress speech task done" << std::endl;
 
     std::cout << "compression threads stopped" << std::endl;
 
@@ -859,12 +983,14 @@ int main()
     infrared_image_compress_task.running_ = false;
     audio_compress_task.running_ = false;
     bodies_compress_task.running_ = false;
+    speech_compress_task.running_ = false;
 
     color_image_read_fifo.getCondition().notify_all();
     depth_image_read_fifo.getCondition().notify_all();
     infrared_image_read_fifo.getCondition().notify_all();
     audio_read_fifo.getCondition().notify_all();
     bodies_read_fifo.getCondition().notify_all();
+    speech_read_fifo.getCondition().notify_all();
 
     // wait for compression threads to stop
     compress_pool.joinAll();
