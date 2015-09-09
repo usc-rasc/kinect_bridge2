@@ -67,7 +67,7 @@ public:
 
 //        std::cout << "MessageCoder packing serializable to binary" << std::endl;
         // pack serializable to binary
-        serializable.packAs<__Base>( binary_writer );
+        serializable.template packAs<__Base>( binary_writer );
         binary_writer.flush();
         archive.flush();
 
@@ -113,7 +113,7 @@ public:
 
 //        std::cout << "MessageCoder unpacking serializable from binary; size: " << binary_message.size_ << std::endl;
         // unpack into __Serializable using binary_reader
-        serializable.unpackAs<__Base>( binary_reader );
+        serializable.template unpackAs<__Base>( binary_reader );
     }
 
     template<class __Serializable>
