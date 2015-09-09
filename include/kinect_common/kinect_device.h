@@ -4,13 +4,33 @@
 #include <kinect_common/kinect.h>
 #include <kinect_common/memory.h>
 #include <kinect_common/exceptions.h>
+#include <kinect_common/kinect_audio_stream.h>
+
+// For speech APIs
+// NOTE: To ensure that application compiles and links against correct SAPI versions (from Microsoft Speech
+//       SDK), VC++ include and library paths should be configured to list appropriate paths within Microsoft
+//       Speech SDK installation directory before listing the default system include and library directories,
+//       which might contain a version of SAPI that is not appropriate for use together with Kinect sensor.
+#include <sapi.h>
+__pragma(warning(push))
+__pragma(warning(disable:6385 6001)) // Suppress warnings in public SDK header
+#include <sphelper.h>
+__pragma(warning(pop))
+
+// This is the class ID we expect for the Microsoft Speech recognizer.
+// Other values indicate that we're using a version of sapi.h that is
+// incompatible with this sample.
+//DEFINE_GUID(CLSID_ExpectedRecognizer, 0x495648e7, 0xf7ab, 0x4267, 0x8e, 0x0f, 0xca, 0xfb, 0x7a, 0x33, 0xc1, 0x60);
 
 #include <messages/container_messages.h>
 #include <messages/utility_messages.h>
 #include <messages/image_message.h>
 #include <messages/audio_message.h>
 #include <messages/geometry_messages.h>
+
 #include <iostream>
+#include <locale>
+#include <codecvt>
 
 // ####################################################################################################
 /*
@@ -444,6 +464,78 @@ public:
     }
 };
 
+// ####################################################################################################
+class KinectSpeechPhraseMessage : public SerializableInterface
+{
+public:
+    std::string tag_;
+    float confidence_;
+
+    // ====================================================================================================
+    KinectSpeechPhraseMessage()
+    {
+        //
+    }
+
+    // ====================================================================================================
+    template<class __Archive>
+    void pack( __Archive & archive )
+    {
+        archive << tag_;
+        archive << static_cast<float>( confidence_ );
+    }
+
+    // ====================================================================================================
+    template<class __Archive>
+    void unpack( __Archive & archive )
+    {
+        archive >> tag_;
+        archive >> static_cast<float>( confidence_ );
+    }
+
+    // ====================================================================================================
+    static std::string const & name()
+    {
+        static std::string const name( "KinectSpeechPhraseMessage" );
+        return name;
+    }
+
+    // ====================================================================================================
+    virtual std::string const & vName() const
+    {
+        return name();
+    }
+};
+
+// ####################################################################################################
+class KinectSpeechMessage : public MultiMessage<VectorMessage<KinectSpeechPhraseMessage>, TimeStampMessage>
+{
+public:
+    typedef MultiMessage<VectorMessage<KinectSpeechPhraseMessage>, TimeStampMessage> _Message;
+
+    // ====================================================================================================
+    template<class... __Args>
+    KinectSpeechMessage( __Args&&... args )
+    :
+        _Message( std::forward<__Args>( args )... )
+    {
+        //
+    }
+
+    // ====================================================================================================
+    std::string const & name() const
+    {
+        static std::string const name( "KinectSpeechMessage" );
+        return name;
+    }
+
+    // ====================================================================================================
+    virtual std::string const & vName() const
+    {
+        return name();
+    }
+};
+
 /*
 // ####################################################################################################
 class KinectFaceMessage : public SerializableInterface
@@ -781,6 +873,126 @@ public:
         }
     };
 
+    // ####################################################################################################
+    struct SpeechRecognizer : public ReleasableWrapper<ISpRecognizer>
+    {
+        typedef ReleasableWrapper<ISpRecognizer> _ReleasableWrapper;
+
+        // A single audio beam off the Kinect sensor.
+        ReleasableWrapper<IAudioBeam> audio_beam_;
+
+        // An IStream derived from the audio beam, used to read audio samples
+        ReleasableWrapper<IStream> raw_audio_stream_;
+
+        // Stream for converting 32bit Audio provided by Kinect to 16bit required by speech rec
+        std::shared_ptr<KinectAudioStream> kinect_audio_stream_;
+
+        // Stream given to speech recognition engine, which it may convert to some other format for processing
+        ReleasableWrapper<ISpStream> speech_stream_;
+
+        // Speech recognizer context
+        ReleasableWrapper<ISpRecoContext> speech_context_;
+
+        // Speech grammar
+        ReleasableWrapper<ISpRecoGrammar> speech_grammar_;
+
+//        // Event triggered when we detect speech recognition
+//        HANDLE speech_event_;
+
+        // ====================================================================================================
+        SpeechRecognizer()
+        {
+            //
+        }
+
+        ~SpeechRecognizer()
+        {
+            CoUninitialize();
+        }
+
+        // ====================================================================================================
+        void initialize( KinectSensor & kinect_sensor, std::wstring const & grammar_filename )
+        {
+
+            // open audio input
+            // ----------------------------------------------------------------------------------------------------
+            ReleasableWrapper<IAudioSource> audio_source;
+            if( FAILED( kinect_sensor->get_AudioSource( audio_source.getAddr() ) ) ) throw KinectException( "Failed to get audio source for speech recognition" );
+
+            ReleasableWrapper<IAudioBeamList> audio_beam_list;
+            if( FAILED( audio_source->get_AudioBeams( audio_beam_list.getAddr() ) ) ) throw KinectException( "Failed to get audio beam list for speech recognition" );
+
+            if( FAILED( audio_beam_list->OpenAudioBeam( 0, audio_beam_.getAddr() ) ) ) throw KinectException( "Failed to open first audio beam for speech recognition" );
+
+            if( FAILED( audio_beam_->OpenInputStream( raw_audio_stream_.getAddr() ) ) ) throw KinectException( "Failed to open an input stream to the first audio beam for speech recognition" );
+
+            kinect_audio_stream_ = std::make_shared<KinectAudioStream>( raw_audio_stream_.get() );
+
+            // create speech recognizer
+            // ----------------------------------------------------------------------------------------------------
+
+            // Audio Format for Speech Processing
+            WORD AudioFormat = WAVE_FORMAT_PCM;
+            WORD AudioChannels = 1;
+            DWORD AudioSamplesPerSecond = 16000;
+            DWORD AudioAverageBytesPerSecond = 32000;
+            WORD AudioBlockAlign = 2;
+            WORD AudioBitsPerSample = 16;
+
+            WAVEFORMATEX wfxOut = {AudioFormat, AudioChannels, AudioSamplesPerSecond, AudioAverageBytesPerSecond, AudioBlockAlign, AudioBitsPerSample, 0};
+
+            if( FAILED( CoInitializeEx( NULL, COINIT_MULTITHREADED ) ) ) throw KinectException( "Failed to initialize COM object for speech stream" );
+
+            if( FAILED( CoCreateInstance( CLSID_SpStream, NULL, CLSCTX_INPROC_SERVER, __uuidof(ISpStream), (void**)speech_stream_.getAddr() ) ) ) throw KinectException( "Failed to create speech stream instance" );
+
+            kinect_audio_stream_->SetSpeechState(true);
+            if( FAILED( speech_stream_->SetBaseStream( kinect_audio_stream_.get(), SPDFID_WaveFormatEx, &wfxOut ) ) ) throw KinectException( "Failed to create downsampling stream for speech recognition" );
+
+            if( FAILED( CoCreateInstance( CLSID_SpInprocRecognizer, NULL, CLSCTX_INPROC_SERVER, __uuidof(ISpRecognizer), (void**)_ReleasableWrapper::getAddr() ) ) ) throw KinectException( "Failed to create speech recognizer instance" );
+
+            _ReleasableWrapper::get()->SetInput( speech_stream_.get(), TRUE );
+
+            ReleasableWrapper<ISpObjectToken> speech_engine_token;
+            HRESULT hr = SpFindBestToken( SPCAT_RECOGNIZERS, L"Language=409;Kinect=True", NULL, speech_engine_token.getAddr() );
+            if( FAILED( hr ) )
+            {
+                std::cout << "SpFindBestToken failed with error: " << hr << std::endl;
+                throw KinectException( "Failed to load acousic model for Kinect" );
+            }
+
+            _ReleasableWrapper::get()->SetRecognizer( speech_engine_token.get() );
+            if( FAILED( _ReleasableWrapper::get()->CreateRecoContext( speech_context_.getAddr() ) ) ) throw KinectException( "Failed to create speech recognition context" );
+
+            // For long recognition sessions (a few hours or more), it may be beneficial to turn off adaptation of the acoustic model.
+            // This will prevent recognition accuracy from degrading over time.
+            if( FAILED( _ReleasableWrapper::get()->SetPropertyNum( L"AdaptationOn", 0 ) ) ) throw KinectException( "Failed to disable speech adaptation" );
+
+            // load grammar
+            // ----------------------------------------------------------------------------------------------------
+            if( FAILED( speech_context_->CreateGrammar( 1, speech_grammar_.getAddr() ) ) ) throw KinectException( "Failed to create grammar" );
+
+            // Populate recognition grammar from file
+            if( FAILED( speech_grammar_->LoadCmdFromFile( grammar_filename.c_str(), SPLO_STATIC ) ) ) throw KinectException( "Failed to load grammar data from file" );
+
+            // start speech rec
+            // ----------------------------------------------------------------------------------------------------
+
+            // Specify that all top level rules in grammar are now active
+            if( FAILED( speech_grammar_->SetRuleState( NULL, NULL, SPRS_ACTIVE ) ) ) throw KinectException( "Failed to set grammar rule state" );
+
+            // Specify that engine should always be reading audio
+            if( FAILED( _ReleasableWrapper::get()->SetRecoState( SPRST_ACTIVE_ALWAYS ) ) ) throw KinectException( "Failed to set speech recognition state" );
+
+            // Specify that we're only interested in receiving recognition events
+            if( FAILED( speech_context_->SetInterest( SPFEI(SPEI_RECOGNITION), SPFEI(SPEI_RECOGNITION) ) ) ) throw KinectException( "Failed to subscribe to speech recognition events" );
+
+            // Ensure that engine is recognizing speech and not in paused state
+            if( FAILED( speech_context_->Resume( 0 ) ) ) throw KinectException( "Failed to start speech recognition engine" );
+
+//          m_hSpeechEvent = m_pSpeechContext->GetNotifyEventHandle();
+        }
+    };
+
 /*
     // ####################################################################################################
     struct FaceFrameReader
@@ -836,6 +1048,7 @@ public:
     InfraredFrameReader infrared_frame_reader_;
     AudioBeamFrameReader audio_beam_frame_reader_;
     BodyFrameReader body_frame_reader_;
+    SpeechRecognizer speech_recognizer_;
 //    FaceFrameReader face_frame_reader_;
 
     bool initialized_;
@@ -849,7 +1062,7 @@ public:
     }
 
     // ====================================================================================================
-    void initialize( bool color = true, bool depth = true, bool infrared = true, bool audio = true, bool body = true /*, bool face = true*/ )
+    void initialize( bool color = true, bool depth = true, bool infrared = true, bool audio = true, bool body = true, bool speech = true /*, bool face = true*/ )
     {
         if( initialized_ ) return;
 
@@ -883,6 +1096,18 @@ public:
         if( body /*|| face*/ )
         {
             body_frame_reader_.initialize( kinect_sensor_ );
+        }
+
+        if( speech )
+        {
+//            if( CLSID_ExpectedRecognizer != CLSID_SpInprocRecognizer )
+//            {
+//                throw KinectException( "Using incorrect version of sapi.h; speech will be disabled" );
+//            }
+//            else
+            {
+                speech_recognizer_.initialize( kinect_sensor_, std::wstring( L"grammar.grxml" ) );
+            }
         }
 
 /*
@@ -1324,6 +1549,60 @@ public:
         if( !bodies_message_ptr ) bodies_message_ptr = std::make_shared<__Message>();
 
         pullBodies( *bodies_message_ptr );
+    }
+
+    // ====================================================================================================
+    void pullSpeech( KinectSpeechMessage & speech_message )
+    {
+        auto & header = speech_message.header_;
+        auto & payload = speech_message.payload_;
+        payload.clear();
+
+        SPEVENT speech_event = {SPEI_UNDEFINED, SPET_LPARAM_IS_UNDEFINED, 0, 0, 0, 0};
+        ULONG num_events_fetched = 0;
+
+        // look for a single event
+        speech_recognizer_.speech_context_->GetEvents( 1, &speech_event, &num_events_fetched );
+
+        if( num_events_fetched > 0 )
+        {
+
+            switch( speech_event.eEventId )
+            {
+            case SPEI_RECOGNITION:
+                if( SPET_LPARAM_IS_OBJECT == speech_event.elParamType )
+                {
+                    ISpRecoResult* recognition_result = reinterpret_cast<ISpRecoResult*>( speech_event.lParam );
+                    SPPHRASE* speech_phrase = NULL;
+
+                    if( FAILED( recognition_result->GetPhrase( &speech_phrase ) ) ) throw KinectException( "Failed to get phrase from speech recognition result" );
+
+                    speech_message.stamp_ = speech_phrase->ftStartTime;
+
+                    if( speech_phrase->pProperties != NULL && speech_phrase->pProperties->pFirstChild != NULL )
+                    {
+                        const SPPHRASEPROPERTY* speech_tag = speech_phrase->pProperties->pFirstChild;
+
+                        KinectSpeechPhraseMessage speech_phrase_message;
+                        speech_phrase_message.tag_ = std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().to_bytes( speech_tag->pszValue );
+                        speech_phrase_message.confidence_ = speech_tag->SREngineConfidence;
+
+                        payload.emplace_back( std::move( speech_phrase_message ) );
+                    }
+                    ::CoTaskMemFree( speech_phrase );
+                }
+                break;
+            }
+        }
+    }
+
+    // ====================================================================================================
+    template<class __Message>
+    void pullSpeech( std::shared_ptr<__Message> & speech_message_ptr )
+    {
+        if( !speech_message_ptr ) speech_message_ptr = std::make_shared<__Message>();
+
+        pullSpeech( *speech_message_ptr );
     }
 
 /*
