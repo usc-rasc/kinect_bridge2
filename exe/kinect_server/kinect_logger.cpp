@@ -414,7 +414,7 @@ public:
 //                std::cout << "pulling bodies" << std::endl;
                 _SpeechMsgPtr message_ptr;
                 kinect_device_.pullSpeech( message_ptr );
-                output_fifo_.getHandle( atomics::HandleBase::NotifyType::DELAY_NOTIFY_ALL )->push_back( message_ptr );
+                if( message_ptr->size() > 0 ) output_fifo_.getHandle( atomics::HandleBase::NotifyType::DELAY_NOTIFY_ALL )->push_back( message_ptr );
             }
             catch( KinectException & e )
             {
@@ -864,7 +864,7 @@ int main()
     SpeechCompressTask::_MessageCoder speech_message_coder;
 
     // set threadpool sizes
-    Poco::ThreadPool read_pool( 5, 5 );
+    Poco::ThreadPool read_pool( 6, 6 );
     Poco::ThreadPool compress_pool( 8 + 2 + 2 + 1 + 1 + 1, 8 + 2 + 2 + 1 + 1 + 1 );
     Poco::ThreadPool write_pool( 1, 1 );
 
