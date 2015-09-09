@@ -2,6 +2,8 @@
 #define _MESSAGES_OUTPUTFILEDEVICE_H_
 
 #include <messages/container_messages.h>
+#include <messages/binary_message.h>
+
 #include <fstream>
 
 class OutputFileDeviceMessageHeader : public RecursiveMessageHeader
