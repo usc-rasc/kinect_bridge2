@@ -835,7 +835,7 @@ public:
     DepthFrameReader depth_frame_reader_;
     InfraredFrameReader infrared_frame_reader_;
     AudioBeamFrameReader audio_beam_frame_reader_;
-//    BodyFrameReader body_frame_reader_;
+    BodyFrameReader body_frame_reader_;
 //    FaceFrameReader face_frame_reader_;
 
     bool initialized_;
@@ -849,7 +849,7 @@ public:
     }
 
     // ====================================================================================================
-    void initialize( bool color = true, bool depth = true, bool infrared = true, bool audio = true, bool body = true, bool face = true )
+    void initialize( bool color = true, bool depth = true, bool infrared = true, bool audio = true, bool body = true /*, bool face = true*/ )
     {
         if( initialized_ ) return;
 
@@ -880,12 +880,10 @@ public:
             audio_beam_frame_reader_.initialize( kinect_sensor_ );
         }
 
-/*
-        if( body || face )
+        if( body /*|| face*/ )
         {
             body_frame_reader_.initialize( kinect_sensor_ );
         }
-*/
 
 /*
         if( face )
@@ -1243,7 +1241,6 @@ public:
         pullAudio( *audio_message_ptr );
     }
 
-/*
     // ====================================================================================================
     void pullBodies( KinectBodiesMessage & bodies_message )
     {
@@ -1251,18 +1248,21 @@ public:
         ReleasableWrapper<IBodyFrame> body_frame;
 
         // address map to pass to IBodyFrame::GetAndRefreshBodyData
-        std::array<IBody*, BODY_COUNT> bodies_array;
-
-        // fill out addresses
-        for( size_t i = 0; i < bodies.size(); ++i )
-        {
-            bodies_array[i] = bodies[i].get();
-        }
+        std::array<IBody*, BODY_COUNT> bodies_array = { NULL };
+//        bodies_array.fill( NULL );
 
         // pull body data
         if( FAILED( body_frame_reader_->AcquireLatestFrame( body_frame.getAddr() ) ) ) throw KinectException( "Failed to acquire body frame" );
 
         if( FAILED( body_frame->GetAndRefreshBodyData( BODY_COUNT, bodies_array.data() ) ) ) throw KinectException( "Failed to get body data from body frame" );
+        else
+        {
+            // fill out addresses
+            for( size_t i = 0; i < bodies.size(); ++i )
+            {
+                bodies[i].get() = bodies_array[i];
+            }
+        }
 
         // fill out bodies message
         if( FAILED( body_frame->get_RelativeTime( reinterpret_cast<INT64 *>( &bodies_message.stamp_ ) ) ) ) throw KinectException( "Failed to get timestamp from body frame" );
@@ -1270,12 +1270,17 @@ public:
         auto & header = bodies_message.header_;
         auto & payload = bodies_message.payload_;
 
-        if( bodies_message.size() < BODY_COUNT ) bodies_message.resize( BODY_COUNT );
+//        if( bodies_message.size() < BODY_COUNT ) bodies_message.resize( BODY_COUNT );
+
+        payload.clear();
 
         for( size_t bodies_idx = 0; bodies_idx < bodies.size(); ++bodies_idx )
         {
+            if( !bodies[bodies_idx].get() ) continue;
+
             auto & body = bodies[bodies_idx];
-            auto & body_msg = bodies_message[bodies_idx];
+            KinectBodyMessage body_msg;
+//            auto & body_msg = bodies_message[bodies_idx];
 
             body->get_IsTracked( &body_msg.is_tracked_ );
             body->get_HandLeftState( reinterpret_cast<HandState *>( &body_msg.hand_state_left_ ) );
@@ -1307,6 +1312,8 @@ public:
                 joint_msg.joint_type_ = static_cast<KinectJointMessage::JointType>( joint_point.JointType );
                 joint_msg.tracking_state_ = static_cast<KinectJointMessage::TrackingState>( joint_point.TrackingState );
             }
+
+            payload.emplace_back( std::move( body_msg ) );
         }
     }
 
@@ -1314,11 +1321,10 @@ public:
     template<class __Message>
     void pullBodies( std::shared_ptr<__Message> & bodies_message_ptr )
     {
-        if( !bodies_message_ptr ) bodies_message_ptr = std::make_shared<__Message>( BODY_COUNT );
+        if( !bodies_message_ptr ) bodies_message_ptr = std::make_shared<__Message>();
 
         pullBodies( *bodies_message_ptr );
     }
-*/
 
 /*
     // ====================================================================================================

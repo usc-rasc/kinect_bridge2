@@ -40,6 +40,9 @@ target_link_libraries( kinect_logger ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${
 add_executable( test_kinect_device_gzip test_kinect_device_gzip.cpp )
 target_link_libraries( test_kinect_device_gzip ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
 
+add_executable( test_kinect_device_skeleton test_kinect_device_skeleton.cpp )
+target_link_libraries( test_kinect_device_skeleton ${POCO_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
+
 #add_executable( kinect_server kinect_server.cpp kinect_server.rc )
 #
 ## set subsystem to windows since we have a GUI
@@ -62,6 +65,7 @@ set( executables
 #		test_kinect_device_RGBA
 #		test_kinect_device_png
 		test_kinect_device_gzip
+		test_kinect_device_skeleton
 )
 
 # copy all DLLs alongside our exe
@@ -87,6 +91,14 @@ foreach( executable ${executables} )
 		add_custom_command( TARGET ${executable} POST_BUILD
 				COMMAND ${CMAKE_COMMAND} -E copy_if_different
 				${dll}
+				$<TARGET_FILE_DIR:${executable}> )
+	endforeach()
+
+	file( GLOB poco_dbgs ${POCO_DLLDIR}/*.pdb )
+	foreach( dbg ${poco_dbgs} )
+		add_custom_command( TARGET ${executable} POST_BUILD
+				COMMAND ${CMAKE_COMMAND} -E copy_if_different
+				${dbg}
 				$<TARGET_FILE_DIR:${executable}> )
 	endforeach()
 endforeach()
