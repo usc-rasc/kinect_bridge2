@@ -752,10 +752,12 @@ int main()
     AudioCompressTask::_MessageCoder audio_message_coder( 1 );
 //    BodiesCompressTask::_MessageCoder bodies_message_coder;
 
+    // set threadpool sizes
     Poco::ThreadPool read_pool( 5, 5 );
     Poco::ThreadPool compress_pool( 8 + 2 + 2 + 1 + 1, 8 + 2 + 2 + 1 + 1 );
     Poco::ThreadPool write_pool( 1, 1 );
 
+    // declare inter-thread message passing FIFOs
     atomics::Wrapper<std::deque<_ColorImageMsgPtr> > color_image_read_fifo;
     atomics::Wrapper<std::deque<_DepthImageMsgPtr> > depth_image_read_fifo;
     atomics::Wrapper<std::deque<_InfraredImageMsgPtr> > infrared_image_read_fifo;
@@ -764,22 +766,26 @@ int main()
 
     atomics::Wrapper<std::deque<_CodedMsgPtr> > compress_fifo;
 
+    // declare read tasks
     ColorImageReadTask color_image_read_task( color_image_read_fifo, kinect_device );
     DepthImageReadTask depth_image_read_task( depth_image_read_fifo, kinect_device );
     InfraredImageReadTask infrared_image_read_task( infrared_image_read_fifo, kinect_device );
     AudioReadTask audio_read_task( audio_read_fifo, kinect_device );
 //    BodiesReadTask bodies_read_task( bodies_read_fifo, kinect_device );
 
+    // declare compress tasks
     ColorImageCompressTask color_image_compress_task( color_image_read_fifo, compress_fifo, color_image_message_coder );
     DepthImageCompressTask depth_image_compress_task( depth_image_read_fifo, compress_fifo, depth_image_message_coder );
     InfraredImageCompressTask infrared_image_compress_task( infrared_image_read_fifo, compress_fifo, infrared_image_message_coder );
     AudioCompressTask audio_compress_task( audio_read_fifo, compress_fifo, audio_message_coder );
 //    BodiesCompressTask bodies_compress_task( bodies_read_fifo, compress_fifo, bodies_message_coder );
 
+    // declare output tasks
     WriteTask write_task( compress_fifo, output_stream );
 
     std::cout << "starting worker threads" << std::endl;
 
+    // start pipeline in reverse, starting with outputs
     while( write_pool.available() ) write_pool.start( write_task );
 
     for( size_t i = 0; i < 8; ++i ) compress_pool.start( color_image_compress_task );
@@ -794,6 +800,7 @@ int main()
     read_pool.start( audio_read_task );
 //    read_pool.start( bodies_read_task );
 
+    // use the main thread to produce status updates while program is running
     std::streamsize last_size = 0;
     while( running_ )
     {
@@ -804,17 +811,24 @@ int main()
         std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
     }
 
+    // on shutdown, stop tasks in the oppisite order they were started, so from inputs to outputs
     std::cout << "stopping worker threads" << std::endl;
 
+    // mark all read tasks as stopped; we assume they are single-threaded, non-blocking, and will check their own states reasonably often
     color_image_read_task.running_ = false;
     depth_image_read_task.running_ = false;
     infrared_image_read_task.running_ = false;
     audio_read_task.running_ = false;
 //    bodies_read_task.running_ = false;
+
+    // wait for tasks to stop
     read_pool.joinAll();
 
     std::cout << "read threads stopped" << std::endl;
 
+    // for each compression task, we assume they are multi-threaded and are potentially blocking on their input FIFOs
+    // we also assume that they are not deadlocked waiting on their output FIFOs
+    // at this point, all read threads are stopped, so we we ping the input FIFOs to wake up the compression threads and force them to empty out the input FIFOs
     while( !color_image_read_fifo->empty() )
     {
         color_image_read_fifo.getCondition().notify_one();
@@ -843,6 +857,7 @@ int main()
 
     std::cout << "compression threads stopped" << std::endl;
 
+    // at this point, all compression threads should have empty inputs, so we can shut them down
     color_image_compress_task.running_ = false;
     depth_image_compress_task.running_ = false;
     infrared_image_compress_task.running_ = false;
@@ -855,15 +870,18 @@ int main()
     audio_read_fifo.getCondition().notify_all();
 //    bodies_read_fifo.getCondition().notify_all();
 
+    // wait for compression threads to stop
     compress_pool.joinAll();
 
     std::cout << "compress threads stopped" << std::endl;
 
+    // ping compression inputs until they're empty, then stop the write threads
     while( !compress_fifo->empty() ) compress_fifo.getCondition().notify_one();
     write_task.running_ = false;
     compress_fifo.getCondition().notify_all();
     write_pool.joinAll();
 
+    // close output stream
     std::cout << "closing output stream" << std::endl;
 
     output_stream.flush();
@@ -871,6 +889,7 @@ int main()
     std::cout << "final log size: " << output_stream.tellp() / 1000000 << std::endl;
     output_stream.close();
 
+    // give users a chance to read the statistics before exiting
     std::cout << "terminating in 3 seconds..." << std::endl;
 
     std::this_thread::sleep_for( std::chrono::seconds( 3 ) );
