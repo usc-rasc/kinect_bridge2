@@ -65,6 +65,10 @@ else()
 	set( POCO_LIBDIR "${POCO_DEPDIR}/lib" )
 endif()
 
+# speech
+set( SPEECH_INCDIR "$<1:$(ProgramW6432)>/Microsoft SDKs/Speech/v11.0/Include" )
+set( SPEECH_LIBDIR "$(ProgramW6432)/Microsoft SDKs/Speech/v11.0/Lib" )
+
 # kinect
 set( KINECT_INCDIR "$<1:$(KINECTSDK20_DIR)>/inc" )
 
