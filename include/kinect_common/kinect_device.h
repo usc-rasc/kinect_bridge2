@@ -907,7 +907,19 @@ public:
 
         ~SpeechRecognizer()
         {
+            if( kinect_audio_stream_.get() ) kinect_audio_stream_->SetSpeechState( false );
+            if( _ReleasableWrapper::get() ) _ReleasableWrapper::get()->SetRecoState( SPRST_INACTIVE_WITH_PURGE );
+
+            speech_stream_.release();
+            _ReleasableWrapper::release();
+            speech_context_.release();
+            speech_grammar_.release();
+
             CoUninitialize();
+
+            kinect_audio_stream_.reset();
+            raw_audio_stream_.release();
+            audio_beam_.release();
         }
 
         // ====================================================================================================
