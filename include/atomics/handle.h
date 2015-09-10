@@ -121,6 +121,9 @@ public:
         try
         {
 //            if( !name_.empty() ) std::cout << "Handle [" << name_ << "] unlocking" << std::endl;
+
+            // MSVCP 12 : no exception thrown for unlocking an unlocked lock
+            // gcc 4.8.1 : throws std::errc::operation_not_permitted
             lock_.unlock();
 //            if( !name_.empty() ) std::cout << "Handle [" << name_ << "] done unlocking" << std::endl;
         }
@@ -158,11 +161,17 @@ public:
     {
         try
         {
+            // MSVCP 12 : throws std::errc::device_or_resource_busy
+            // gcc 4.8.1 : throws std::errc::operation_not_permitted
             if( !lock_ ) lock_.lock();
         }
         catch( std::system_error & e )
         {
+#ifdef _WIN32
+            if( e.code() != std::errc::device_or_resource_busy )
+#else
             if( e.code() != std::errc::resource_deadlock_would_occur )
+#endif
             {
                 if( !name_.empty() ) std::cout << "Handle [" << name_ << "] locking error" << std::endl;
                 std::cout << "!!! Locking error code " << e.code() << ": " << e.what() << std::endl;
@@ -178,11 +187,20 @@ public:
         bool is_locked = false;
         try
         {
+            // MSVCP 12 : throws std::errc::device_or_resource_busy
+            // gcc 4.8.1 : throws std::errc::operation_not_permitted
             is_locked = lock_ || lock_.try_lock();
         }
         catch( std::system_error & e )
         {
-            if( e.code() != std::errc::resource_deadlock_would_occur ) throw e;
+#ifdef _WIN32
+            if( e.code() != std::errc::device_or_resource_busy )
+#else
+            if( e.code() != std::errc::resource_deadlock_would_occur )
+#endif
+            {
+                throw e;
+            }
             // already locked by this thread; that's fine
             is_locked = true;
         }
@@ -198,11 +216,20 @@ public:
         bool is_locked = false;
         try
         {
+            // MSVCP 12 : throws std::errc::device_or_resource_busy
+            // gcc 4.8.1 : throws std::errc::operation_not_permitted
             is_locked = lock_ || lock_.try_lock_for( duration );
         }
         catch( std::system_error & e )
         {
-            if( e.code() != std::errc::resource_deadlock_would_occur ) throw e;
+#ifdef _WIN32
+            if( e.code() != std::errc::device_or_resource_busy )
+#else
+            if( e.code() != std::errc::resource_deadlock_would_occur )
+#endif
+            {
+                throw e;
+            }
             // already locked by this thread; that's fine
             is_locked = true;
         }
@@ -231,12 +258,18 @@ public:
 //        if( !name_.empty() ) std::cout << "Handle [" << name_ << "] waitOn()" << std::endl;
         try
         {
+            // MSVCP 12 : throws std::errc::device_or_resource_busy
+            // gcc 4.8.1 : throws std::errc::operation_not_permitted
             if( !lock_ ) lock_.lock();
 //            if( !name_.empty() ) std::cout << "Handle [" << name_ << "] locked" << std::endl;
         }
         catch( std::system_error & e )
         {
+#ifdef _WIN32
+            if( e.code() != std::errc::device_or_resource_busy )
+#else
             if( e.code() != std::errc::resource_deadlock_would_occur )
+#endif
             {
                 if( !name_.empty() ) std::cout << "Handle [" << name_ << "] locking error" << std::endl;
                 std::cout << "!!! Locking error code " << e.code() << ": " << e.what() << std::endl;
@@ -281,11 +314,21 @@ public:
         bool is_locked = false;
         try
         {
+            // MSVCP 12 : throws std::errc::device_or_resource_busy
+            // gcc 4.8.1 : throws std::errc::operation_not_permitted
             is_locked = lock_.try_lock_until( end_time );
         }
         catch( std::system_error & e )
         {
-            if( e.code() != std::errc::resource_deadlock_would_occur ) throw e;
+#ifdef _WIN32
+            if( e.code() != std::errc::device_or_resource_busy )
+#else
+            if( e.code() != std::errc::resource_deadlock_would_occur )
+#endif
+            {
+                throw e;
+            }
+
             // already locked by this thread; that's fine
             is_locked = true;
         }
