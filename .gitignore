@@ -3,6 +3,7 @@
 *.vcxproj
 
 bin
+build
 lib
 cmake
 deps/*

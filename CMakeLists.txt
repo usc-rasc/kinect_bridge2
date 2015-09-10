@@ -3,21 +3,10 @@ cmake_minimum_required(VERSION 2.4.6)
 if( WIN32 )
 	project( kinect_bridge2 )
 else()
-## ROS init stuff here
-#	include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
-#
-## Set the build type.  Options are:
-##  Coverage       : w/ debug symbols, w/o optimization, w/ code-coverage
-##  Debug          : w/ debug symbols, w/o optimization
-##  Release        : w/o debug symbols, w/ optimization
-##  RelWithDebInfo : w/ debug symbols, w/ optimization
-##  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#	set(ROS_BUILD_TYPE Release)
-#	rosbuild_init()
-
-# this section can be removed when the package is adapted for ROS
-	project( kinect_bridge2 )
-	set(CMAKE_BUILD_TYPE Release)
+# ROS init stuff here
+	include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
+	set(ROS_BUILD_TYPE Release)
+	rosbuild_init()
 endif()
 
 #set the default path for built executables to the "bin" directory
