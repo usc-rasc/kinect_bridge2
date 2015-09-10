@@ -210,7 +210,7 @@ class ArrayHelper
 {
 public:
     template<class __Iterator>
-    ArrayHelper( __Iterator & array_it )
+    ArrayHelper( __Iterator array_it )
     {
         //
     }
@@ -230,7 +230,7 @@ public:
     __Data & quat_w;
 
     template<class __Iterator>
-    ArrayHelper( __Iterator & array_it )
+    ArrayHelper( __Iterator array_it )
     :
         x( *array_it++ ),
         y( *array_it++ ),
@@ -257,7 +257,7 @@ public:
     __Data & yaw;
 
     template<class __Iterator>
-    ArrayHelper( __Iterator & array_it )
+    ArrayHelper( __Iterator array_it )
     :
         x( *array_it++ ),
         y( *array_it++ ),
@@ -277,7 +277,7 @@ public:
     __Data & w;
 
     template<class __Iterator>
-    ArrayHelper( __Iterator & array_it )
+    ArrayHelper( __Iterator array_it )
     :
         ArrayHelper<__Data, 4-1>( array_it ),
         w( *array_it++ )
@@ -296,7 +296,7 @@ public:
     __Data & yaw;
 
     template<class __Iterator>
-    ArrayHelper( __Iterator & array_it )
+    ArrayHelper( __Iterator array_it )
     :
         ArrayHelper<__Data, 3-1>( array_it ),
         z( *array_it ),
@@ -318,7 +318,7 @@ public:
     __Data & pitch;
 
     template<class __Iterator>
-    ArrayHelper( __Iterator & array_it )
+    ArrayHelper( __Iterator array_it )
     :
         x( *array_it ),
         roll( *array_it++ ),
