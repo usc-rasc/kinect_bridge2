@@ -93,19 +93,29 @@ foreach( executable ${executables} )
 				$<TARGET_FILE_DIR:${executable}> )
 	endforeach()
 
-	file( GLOB poco_dlls ${POCO_DLLDIR}/*.dll )
-	foreach( dll ${poco_dlls} )
-		add_custom_command( TARGET ${executable} POST_BUILD
-				COMMAND ${CMAKE_COMMAND} -E copy_if_different
-				${dll}
-				$<TARGET_FILE_DIR:${executable}> )
-	endforeach()
+#	file( GLOB poco_dlls ${POCO_DLLDIR}/*.dll )
 
-	file( GLOB poco_dbgs ${POCO_DLLDIR}/*.pdb )
-	foreach( dbg ${poco_dbgs} )
-		add_custom_command( TARGET ${executable} POST_BUILD
-				COMMAND ${CMAKE_COMMAND} -E copy_if_different
-				${dbg}
-				$<TARGET_FILE_DIR:${executable}> )
-	endforeach()
+	if( ${BUILD_TYPE} STREQUAL x64 )
+		foreach( poco_lib ${POCO_LIBNAMES} )
+			add_custom_command( TARGET ${executable} POST_BUILD
+					COMMAND ${CMAKE_COMMAND} -E copy_if_different
+					${POCO_DLLDIR}/Poco${poco_lib}64.dll
+					$<TARGET_FILE_DIR:${executable}> )
+		endforeach()
+	else()
+		foreach( poco_lib ${POCO_LIBNAMES} )
+			add_custom_command( TARGET ${executable} POST_BUILD
+					COMMAND ${CMAKE_COMMAND} -E copy_if_different
+					${POCO_DLLDIR}/Poco${poco_lib}.dll
+					$<TARGET_FILE_DIR:${executable}> )
+		endforeach()
+	endif()
+
+#	file( GLOB poco_dbgs ${POCO_DLLDIR}/*.pdb )
+#	foreach( dbg ${poco_dbgs} )
+#		add_custom_command( TARGET ${executable} POST_BUILD
+#				COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#				${dbg}
+#				$<TARGET_FILE_DIR:${executable}> )
+#	endforeach()
 endforeach()
