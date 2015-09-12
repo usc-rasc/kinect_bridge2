@@ -16,9 +16,6 @@ link_directories( "${POCO_LIBDIR}" )
 include_directories( "${PNG_INCDIR}" )
 link_directories( "${PNG_LIBDIR}" )
 
-#add_executable( test_pack_as test_pack_as.cpp )
-#target_link_libraries( test_pack_as ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
-
 add_executable( test_kinect_device_RGB test_kinect_device_RGB.cpp )
 target_link_libraries( test_kinect_device_RGB ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
 
@@ -34,49 +31,30 @@ target_link_libraries( test_kinect_device_audio ${POCO_LIBS} ${PNG_LIBS} ${SNDFI
 add_executable( kinect_logger kinect_logger.cpp )
 target_link_libraries( kinect_logger ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
 
-#add_executable( test_kinect_device_RGBA test_kinect_device_RGBA.cpp )
-#target_link_libraries( test_kinect_device_RGBA ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
-#
-#add_executable( test_kinect_device_png test_kinect_device_png.cpp )
-#target_link_libraries( test_kinect_device_png ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
-#
-#add_executable( test_kinect_device_gzip test_kinect_device_gzip.cpp )
-#target_link_libraries( test_kinect_device_gzip ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
-
 add_executable( test_kinect_device_skeleton test_kinect_device_skeleton.cpp )
 target_link_libraries( test_kinect_device_skeleton ${POCO_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
 
 add_executable( test_kinect_device_speech test_kinect_device_speech.cpp )
 target_link_libraries( test_kinect_device_speech ${POCO_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
 
-#add_executable( kinect_server kinect_server.cpp kinect_server.rc )
-#
-## set subsystem to windows since we have a GUI
-#set_target_properties( kinect_server PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS" ) 
-#
-## need unicode for LPCSTR, etc
-#ADD_DEFINITIONS(-DUNICODE)
-#ADD_DEFINITIONS(-D_UNICODE)
-#
-## link against all of our libs
-#target_link_libraries( kinect_server ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
+add_executable( kinect_server kinect_server.cpp )
+target_link_libraries( kinect_server ${POCO_LIBS} ${PNG_LIBS} ${SNDFILE_LIBS} ${KINECT_LIBS} kinect_common messages atomics )
 
 set( executables
-#		test_pack_as
+		kinect_logger
+		kinect_server
 		test_kinect_device_RGB
 		test_kinect_device_depth
 		test_kinect_device_infrared
 		test_kinect_device_audio
-		kinect_logger
-#		test_kinect_device_RGBA
-#		test_kinect_device_png
-#		test_kinect_device_gzip
 		test_kinect_device_skeleton
 		test_kinect_device_speech
 )
 
 # copy all DLLs alongside our exe
 foreach( executable ${executables} )
+
+# libpng
 	file( GLOB png_dlls ${PNG_DLLDIR}/*.dll )
 	foreach( dll ${png_dlls} )
 		add_custom_command( TARGET ${executable} POST_BUILD
@@ -85,6 +63,7 @@ foreach( executable ${executables} )
 				$<TARGET_FILE_DIR:${executable}> )
 	endforeach()
 
+# sndfile
 	file( GLOB sndfile_dlls ${SNDFILE_DLLDIR}/*.dll )
 	foreach( dll ${sndfile_dlls} )
 		add_custom_command( TARGET ${executable} POST_BUILD
@@ -93,8 +72,7 @@ foreach( executable ${executables} )
 				$<TARGET_FILE_DIR:${executable}> )
 	endforeach()
 
-#	file( GLOB poco_dlls ${POCO_DLLDIR}/*.dll )
-
+# poco
 	if( ${BUILD_TYPE} STREQUAL x64 )
 		foreach( poco_lib ${POCO_LIBNAMES} )
 			add_custom_command( TARGET ${executable} POST_BUILD
@@ -110,12 +88,4 @@ foreach( executable ${executables} )
 					$<TARGET_FILE_DIR:${executable}> )
 		endforeach()
 	endif()
-
-#	file( GLOB poco_dbgs ${POCO_DLLDIR}/*.pdb )
-#	foreach( dbg ${poco_dbgs} )
-#		add_custom_command( TARGET ${executable} POST_BUILD
-#				COMMAND ${CMAKE_COMMAND} -E copy_if_different
-#				${dbg}
-#				$<TARGET_FILE_DIR:${executable}> )
-#	endforeach()
 endforeach()
