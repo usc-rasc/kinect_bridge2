@@ -1,20 +1,20 @@
 #include <iostream>
-#include <fstream>
 #include <thread>
-
-#include <kinect_common/kinect_device.h>
-
 #include <deque>
 #include <memory>
 #include <sstream>
+#include <fstream>
 
-#include <atomics/wrapper.h>
-#include <atomics/print.h>
-#include <atomics/binary_stream.h>
+// we have to include this before any Poco code (or any code that includes Poco code) otherwise windows speech API will go full retard
+#include <kinect_common/kinect_device.h>
 
 #include <Poco/Runnable.h>
 #include <Poco/TimeStamp.h>
 #include <Poco/ThreadPool.h>
+
+#include <atomics/wrapper.h>
+#include <atomics/print.h>
+#include <atomics/binary_stream.h>
 
 #include <messages/message_coder.h>
 #include <messages/binary_codec.h>
