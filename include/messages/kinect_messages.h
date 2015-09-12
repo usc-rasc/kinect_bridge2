@@ -285,8 +285,8 @@ public:
     template<class __Archive>
     void unpack( __Archive & archive )
     {
-        archive >> static_cast<uint8_t>( joint_type_ );
-        archive >> static_cast<uint8_t>( tracking_state_ );
+        archive >> joint_type_;
+        archive >> tracking_state_;
         position_.unpack( archive );
         orientation_.unpack( archive );
     }
@@ -352,8 +352,8 @@ public:
     void unpack( __Archive & archive )
     {
         archive >> is_tracked_;
-        archive >> static_cast<uint8_t>( hand_state_left_ );
-        archive >> static_cast<uint8_t>( hand_state_right_ );
+        archive >> hand_state_left_;
+        archive >> hand_state_right_;
         _Message::unpack( archive );
     }
 
@@ -426,7 +426,7 @@ public:
     void unpack( __Archive & archive )
     {
         archive >> tag_;
-        archive >> static_cast<float>( confidence_ );
+        archive >> confidence_;
     }
 
     // ====================================================================================================
