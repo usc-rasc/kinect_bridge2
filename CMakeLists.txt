@@ -95,15 +95,15 @@ set( SPEECH_LIBDIR "$(ProgramW6432)/Microsoft SDKs/Speech/v11.0/Lib" )
 else()
 	set( PNG_INCDIR "/usr/local/include" )
 	set( PNG_LIBDIR "/usr/local/lib" )
-	set( PNG_LIBS libpng16 zlib )
+	set( PNG_LIBS png16 z )
 
 	set( SNDFILE_INCDIR "/usr/include" )
 	set( SNDFILE_LIBDIR "/usr/lib" )
-	set( SNDFILE_LIBS libsndfile-1 )
+	set( SNDFILE_LIBS sndfile )
 
 	set( POCO_INCDIR "/usr/local/include" )
 	set( POCO_LIBDIR "/usr/local/lib" )
-	set( POCO_LIBS Foundation Net Util JSON XML )
+	set( POCO_LIBS PocoFoundation PocoNet PocoUtil PocoJSON PocoXML )
 endif()
 
 add_subdirectory( src )
