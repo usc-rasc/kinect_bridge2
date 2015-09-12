@@ -1,16 +1,19 @@
 #ifndef _MESSAGES_OUTPUTTCPDEVICE_H_
 #define _MESSAGES_OUTPUTTCPDEVICE_H_
 
-#include <messages/container_messages.h>
-#include <messages/binary_message.h>
-#include <messages/exceptions.h>
+#include <string>
+#include <fstream>
 
 #include <Poco/Net/ServerSocket.h>
 #include <Poco/Net/SocketAddress.h>
 #include <Poco/Net/StreamSocket.h>
 #include <Poco/Net/SocketStream.h>
 
-#include <string>
+#include <messages/container_messages.h>
+#include <messages/binary_message.h>
+#include <messages/exceptions.h>
+
+#include <atomics/binary_stream.h>
 
 // analagous to server; will start up at the given address:port and wait for a client it can stream data to
 
@@ -90,6 +93,7 @@ public:
     :
         server_socket_( Poco::Net::SocketAddress( std::forward<__Head>( head ), std::forward<__Args>( args )... ) )
     {
+        std::cout << "server listening on " << server_socket_.address().toString() << std::endl;
         updateOutputState( std::forward<__Head>( head ), std::forward<__Args>( args )... );
     }
 
@@ -138,11 +142,18 @@ public:
         if( !output_socket_.impl()->initialized() )
         {
             // if it isn't, we'll wait for new clients; otherwise we already have a connection to the client
-            output_socket_ = server_socket_.acceptConnection();
+//            std::cout << "can't push; waiting for client connection" << std::endl;
+            Poco::Net::SocketAddress client_address;
+            output_socket_ = server_socket_.acceptConnection( client_address );
+            std::cout << "accepted connection from client " << client_address.toString() << std::endl;
         }
 
         _OutputStream output_stream( output_socket_ );
-        serializable.pack( output_stream );
+        atomics::BinaryOutputStream binary_stream( output_stream, atomics::BinaryOutputStream::NETWORK_BYTE_ORDER );
+        serializable.pack( binary_stream );
+        binary_stream.flush();
+        output_stream.flush();
+//        output_stream.close();
     }
 
     template<class __Payload>
