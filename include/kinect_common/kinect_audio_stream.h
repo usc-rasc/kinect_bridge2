@@ -7,7 +7,8 @@
 //     - KinectAudioStream: IStream implementation to convert 32Bit Kinect Stream to 16Bit for Speech.
 // </summary>
 //------------------------------------------------------------------------------
-#pragma once
+#ifndef _KINECTCOMMON_KINECTAUDIOSTREAM_H_
+#define _KINECTCOMMON_KINECTAUDIOSTREAM_H_
 
 #include <windows.h>
 // For WAVEFORMATEX
@@ -88,3 +89,5 @@ private:
     IStream*                m_p32BitAudio;
     bool                    m_SpeechActive;
 };
+
+#endif // _KINECTCOMMON_KINECTAUDIOSTREAM_H_
