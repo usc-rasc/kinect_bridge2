@@ -911,7 +911,7 @@ int main()
 //    read_pool.start( depth_image_read_task );
 //    read_pool.start( infrared_image_read_task );
 //    read_pool.start( audio_read_task );
-//    read_pool.start( bodies_read_task );
+    read_pool.start( bodies_read_task );
     read_pool.start( speech_read_task );
 
     // use the main thread to produce status updates while program is running
