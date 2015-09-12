@@ -647,8 +647,8 @@ public:
 
         __Head::unpack( archive );
 
-//        unpackImpl<__Archive, __Tail...>( archive );
-        unpackImpl<__Tail...>( archive );
+        unpackImpl<__Archive, __Tail...>( archive );
+//        unpackImpl<__Tail...>( archive );
     }
 
     uint32_t numTypes()
@@ -660,8 +660,8 @@ public:
     void unpack( __Archive & archive )
     {
 
-//        unpackImpl<__Archive, __Primary, __Others...>( archive );
-        unpackImpl<__Primary, __Others...>( archive );
+        unpackImpl<__Archive, __Primary, __Others...>( archive );
+//        unpackImpl<__Primary, __Others...>( archive );
     }
 
     template<class... __Bases, class __Archive>
