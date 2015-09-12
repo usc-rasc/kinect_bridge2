@@ -47,13 +47,16 @@ public:
     {
         while( ros::ok() && kinect_bridge_client_.input_socket_.impl()->initialized() )
         {
-            while( !kinect_bridge_client_.input_socket_.available() )
+            while( ros::ok() && !kinect_bridge_client_.input_socket_.available() )
             {
                 std::cout << "waiting for content..." << std::endl;
                 std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
                 ros::spinOnce();
             }
 
+            if( !ros::ok() ) return;
+
+            std::cout << "got message" << std::endl;
             CodedMessage<> binary_coded_message;
             kinect_bridge_client_.pull( binary_coded_message );
             processKinectMessage( binary_coded_message );
@@ -65,6 +68,7 @@ public:
     void processKinectMessage( CodedMessage<> & coded_message )
     {
         auto & coded_header = coded_message.header_;
+        std::cout << "processing message type: " << coded_message.header_.payload_type_ << std::endl;
         if( coded_header.payload_type_ == "KinectSpeechMessage" )
         {
             auto kinect_speech_message = binary_message_coder_.decode<KinectSpeechMessage>( coded_message );
