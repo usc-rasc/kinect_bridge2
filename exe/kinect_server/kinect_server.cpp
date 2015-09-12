@@ -3,7 +3,6 @@
 #include <deque>
 #include <memory>
 #include <sstream>
-#include <fstream>
 
 // we have to include this before any Poco code (or any code that includes Poco code) otherwise windows speech API will go full retard
 #include <kinect_common/kinect_device.h>
@@ -22,6 +21,8 @@
 
 #include <messages/png_image_message.h>
 #include <messages/wav_audio_message.h>
+
+#include <messages/output_tcp_device.h>
 
 typedef KinectColorImageMessage<PNGImageMessage<> > _ColorImageMsg;
 typedef std::shared_ptr<_ColorImageMsg> _ColorImageMsgPtr;
@@ -768,13 +769,13 @@ public:
     typedef atomics::Wrapper<std::deque<_CodedMsgPtr> > _InputFifo;
 
     _InputFifo & input_fifo_;
-    std::ofstream & output_stream_;
+    OutputTCPDevice & output_device_;
     bool running_;
 
-    WriteTask( _InputFifo & input_fifo, std::ofstream & output_stream )
+    WriteTask( _InputFifo & input_fifo, OutputTCPDevice & output_device )
     :
         input_fifo_( input_fifo ),
-        output_stream_( output_stream ),
+        output_device_( output_device ),
         running_( true )
     {
         //
@@ -801,14 +802,15 @@ public:
                 input_handle->pop_front();
             }
 
+            std::cout << "pushing message out to network" << std::endl;
+            output_device_.push( *compressed_message_ptr );
+
             if( compressed_message_ptr->header_.payload_type_ == "KinectColorImageMessage" ) num_color_ ++;
             else if( compressed_message_ptr->header_.payload_type_ == "KinectDepthImageMessage" ) num_depth_ ++;
             else if( compressed_message_ptr->header_.payload_type_ == "KinectInfraredImageMessage" ) num_infrared_ ++;
             else if( compressed_message_ptr->header_.payload_type_ == "KinectAudioMessage" ) num_audio_ ++;
             else if( compressed_message_ptr->header_.payload_type_ == "KinectBodiesMessage" ) num_bodies_ ++;
             else if( compressed_message_ptr->header_.payload_type_ == "KinectSpeechMessage" ) num_speech_ ++;
-
-            compressed_message_ptr->pack( output_stream_ );
         }
     }
 };
@@ -849,12 +851,8 @@ int main()
         }
     }
 
-    std::stringstream ss;
-
-    ss << "D:/chla/data/kinectv2-" << std::time( 0 ) << ".pak";
-
-    std::cout << "logging to: " << ss.str() << std::endl;
-    std::ofstream output_stream( ss.str(), std::ios::binary );
+    OutputTCPDevice output_device( "localhost", 5903 );
+    std::cout << "listening for clients on " << output_device.server_socket_.address().toString() << std::endl;
 
     ColorImageCompressTask::_MessageCoder color_image_message_coder;
     DepthImageCompressTask::_MessageCoder depth_image_message_coder;
@@ -895,7 +893,7 @@ int main()
     SpeechCompressTask speech_compress_task( speech_read_fifo, compress_fifo, speech_message_coder );
 
     // declare output tasks
-    WriteTask write_task( compress_fifo, output_stream );
+    WriteTask write_task( compress_fifo, output_device );
 
     std::cout << "starting worker threads" << std::endl;
 
@@ -909,21 +907,17 @@ int main()
     for( size_t i = 0; i < 1; ++i ) compress_pool.start( bodies_compress_task );
     for( size_t i = 0; i < 1; ++i ) compress_pool.start( speech_compress_task );
 
-    read_pool.start( color_image_read_task );
-    read_pool.start( depth_image_read_task );
-    read_pool.start( infrared_image_read_task );
-    read_pool.start( audio_read_task );
-    read_pool.start( bodies_read_task );
+//    read_pool.start( color_image_read_task );
+//    read_pool.start( depth_image_read_task );
+//    read_pool.start( infrared_image_read_task );
+//    read_pool.start( audio_read_task );
+//    read_pool.start( bodies_read_task );
     read_pool.start( speech_read_task );
 
     // use the main thread to produce status updates while program is running
-    std::streamsize last_size = 0;
     while( running_ )
     {
-        std::streamsize current_size( output_stream.tellp() );
-        std::cout << "Output MBytes: " << current_size / 1000000 << " (" << static_cast<int>( ( 1000.0 / 500.0 ) * ( current_size - last_size ) / 1000000 ) << " MB/sec)" << std::endl;
         std::cout << num_color_ << " | " << num_depth_ << " | " << num_infrared_ << " | " << num_audio_ << " | " << num_bodies_ << " | " << num_speech_ << std::endl;
-        last_size = current_size;
         std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
     }
 
@@ -969,11 +963,13 @@ int main()
         bodies_read_fifo.getCondition().notify_one();
     }
     std::cout << "compress bodies task done" << std::endl;
+/*
     while( !speech_read_fifo->empty() )
     {
         speech_read_fifo.getCondition().notify_one();
     }
     std::cout << "compress speech task done" << std::endl;
+*/
 
     std::cout << "compression threads stopped" << std::endl;
 
@@ -1002,14 +998,6 @@ int main()
     write_task.running_ = false;
     compress_fifo.getCondition().notify_all();
     write_pool.joinAll();
-
-    // close output stream
-    std::cout << "closing output stream" << std::endl;
-
-    output_stream.flush();
-
-    std::cout << "final log size: " << output_stream.tellp() / 1000000 << std::endl;
-    output_stream.close();
 
     // give users a chance to read the statistics before exiting
     std::cout << "terminating in 3 seconds..." << std::endl;

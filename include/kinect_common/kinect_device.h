@@ -1,10 +1,12 @@
 #ifndef _KINECTCOMMON_KINECTDEVICE_H_
 #define _KINECTCOMMON_KINECTDEVICE_H_
 
-#include <kinect_common/kinect.h>
-#include <kinect_common/memory.h>
-#include <kinect_common/exceptions.h>
-#include <kinect_common/kinect_audio_stream.h>
+#include <iostream>
+#include <locale>
+#include <codecvt>
+
+// prevent any includes of Windows.h from including winsock.h
+#define _WINSOCKAPI_
 
 // For speech APIs
 // NOTE: To ensure that application compiles and links against correct SAPI versions (from Microsoft Speech
@@ -14,6 +16,7 @@
 #include <sapi.h>
 __pragma(warning(push))
 __pragma(warning(disable:6385 6001)) // Suppress warnings in public SDK header
+
 #include <sphelper.h>
 __pragma(warning(pop))
 
@@ -22,11 +25,12 @@ __pragma(warning(pop))
 // incompatible with this sample.
 //DEFINE_GUID(CLSID_ExpectedRecognizer, 0x495648e7, 0xf7ab, 0x4267, 0x8e, 0x0f, 0xca, 0xfb, 0x7a, 0x33, 0xc1, 0x60);
 
-#include <messages/kinect_messages.h>
+#include <kinect_common/kinect.h>
+#include <kinect_common/memory.h>
+#include <kinect_common/exceptions.h>
+#include <kinect_common/kinect_audio_stream.h>
 
-#include <iostream>
-#include <locale>
-#include <codecvt>
+#include <messages/kinect_messages.h>
 
 // ####################################################################################################
 /*

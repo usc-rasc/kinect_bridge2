@@ -1,15 +1,17 @@
 #ifndef _MESSAGES_INPUTTCPDEVICE_H_
 #define _MESSAGES_INPUTTCPDEVICE_H_
 
-#include <messages/container_messages.h>
-#include <messages/binary_message.h>
-#include <messages/exceptions.h>
+#include <string>
 
 #include <Poco/Net/SocketAddress.h>
 #include <Poco/Net/StreamSocket.h>
 #include <Poco/Net/SocketStream.h>
 
-#include <string>
+#include <atomics/binary_stream.h>
+
+#include <messages/container_messages.h>
+#include <messages/binary_message.h>
+#include <messages/exceptions.h>
 
 class InputTCPDeviceMessageHeader : public RecursiveMessageHeader
 {
@@ -123,8 +125,13 @@ public:
 //            // if the client isn't connected, we can't do anything; bail
 //            else throw messages::MessageException( "Failed to deserialize message; TCPInputDevice not initialized" );
 //        }
+
         _InputStream input_stream( input_socket_ );
-        serializable.unpack( input_stream );
+        atomics::BinaryInputStream binary_stream( input_stream, atomics::BinaryInputStream::NETWORK_BYTE_ORDER );
+//        std::cout << "TCPInputDevice unpacking serializable from input stream" << std::endl;
+        serializable.unpack( binary_stream );
+        input_stream.flush();
+//        input_stream.close();
     }
 
     template<class __Serializable>

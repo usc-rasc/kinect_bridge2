@@ -1,11 +1,14 @@
 #ifndef _MESSAGES_BINARYCODEC_H_
 #define _MESSAGES_BINARYCODEC_H_
 
-#include <messages/codec.h>
-#include <atomics/binary_stream.h>
 #include <sstream>
+
 #include <Poco/MemoryStream.h>
 #include <Poco/Timestamp.h>
+
+#include <atomics/binary_stream.h>
+
+#include <messages/codec.h>
 
 template<class __Allocator = std::allocator<char> >
 class BinaryCodec : public CodecInterface<CodedMessage<__Allocator> >
