@@ -1,11 +1,14 @@
 #ifndef _MESSAGES_MESSAGECODER_H_
 #define _MESSAGES_MESSAGECODER_H_
 
-#include <messages/codec.h>
-#include <atomics/binary_stream.h>
-#include <Poco/MemoryStream.h>
 #include <sstream>
+
+#include <Poco/MemoryStream.h>
 #include <Poco/Timestamp.h>
+
+#include <atomics/binary_stream.h>
+
+#include <messages/codec.h>
 
 // packs given message to binary, passes to given codec, wraps in CodedMessage
 template<class __Codec>
