@@ -20,7 +20,7 @@ int main( int argc, char ** argv )
 
     // push out one message then quit
     std::cout << "pushing image out to client" << std::endl;
-    output_tcp_device.push( std::move( image_message ) );
+    output_tcp_device.push( image_message );
 
     std::cout << "done; exiting in 5 seconds..." << std::endl;
 
