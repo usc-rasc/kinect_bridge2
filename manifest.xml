@@ -1,0 +1,19 @@
+<package>
+  <description brief="kinect_bridge2">
+
+     kinect_bridge2
+
+  </description>
+  <author>Edward Kaszubski</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/kinect_bridge2</url>
+  <depend package="rosbuild"/>
+  <depend package="roscpp"/>
+  <depend package="std_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="tf"/>
+
+</package>
+
+
