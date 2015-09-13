@@ -89,3 +89,16 @@ foreach( executable ${executables} )
 		endforeach()
 	endif()
 endforeach()
+
+set( speech_executables
+	kinect_logger
+	kinect_server
+	test_kinect_device_speech
+)
+foreach( executable ${speech_executables} )
+# copy grammar file alongside binaries
+	add_custom_command( TARGET ${executable} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+		${CMAKE_CURRENT_SOURCE_DIR}/grammar.grxml
+		$<TARGET_FILE_DIR:${executable}> )
+endforeach()
