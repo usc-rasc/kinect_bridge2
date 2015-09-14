@@ -172,7 +172,7 @@ public:
         }
         catch( messages::MessageException & e )
         {
-            std::cout << "client disconnected" << std::endl;
+            std::cout << "client disconnected: " << e.what() << std::endl;
             output_socket_.close();
         }
     }
