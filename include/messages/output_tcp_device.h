@@ -13,7 +13,8 @@
 #include <messages/binary_message.h>
 #include <messages/exceptions.h>
 
-#include <atomics/binary_stream.h>
+#include <messages/message_coder.h>
+#include <messages/binary_codec.h>
 
 // analagous to server; will start up at the given address:port and wait for a client it can stream data to
 
@@ -125,6 +126,8 @@ public:
     template<class __Serializable>
     void push( __Serializable & serializable )
     {
+        if( !server_socket_.impl()->initialized() ) throw messages::MessageException( "Failed to serialize message; TCPOutputDevice not initialized" );
+
         // make sure stream is open
 //        if( !server_stream_ )
 //        {
@@ -142,18 +145,49 @@ public:
         if( !output_socket_.impl()->initialized() )
         {
             // if it isn't, we'll wait for new clients; otherwise we already have a connection to the client
-//            std::cout << "can't push; waiting for client connection" << std::endl;
+            std::cout << "can't push; waiting for client connection" << std::endl;
             Poco::Net::SocketAddress client_address;
             output_socket_ = server_socket_.acceptConnection( client_address );
             std::cout << "accepted connection from client " << client_address.toString() << std::endl;
         }
 
-        _OutputStream output_stream( output_socket_ );
-        atomics::BinaryOutputStream binary_stream( output_stream, atomics::BinaryOutputStream::NETWORK_BYTE_ORDER );
-        serializable.pack( binary_stream );
-        binary_stream.flush();
-        output_stream.flush();
-//        output_stream.close();
+        MessageCoder<BinaryCodec<> > binary_coder;
+
+        auto binary_coded_message = binary_coder.encode( serializable );
+
+        uint32_t message_size = binary_coded_message.payload_.size_;
+        char protocol_message[6];
+        protocol_message[0] = '<';
+        protocol_message[5] = '>';
+
+        *reinterpret_cast<decltype(message_size)*>( protocol_message + 1 ) = message_size;
+
+        // check if the client has disconnected and reset output_socket_ if necessary
+        try
+        {
+            // send protocol-layer message
+            sendBytes( output_socket_, protocol_message, 6 );
+            // send actual message
+            sendBytes( output_socket_, binary_coded_message.payload_.data_, message_size );
+        }
+        catch( messages::MessageException & e )
+        {
+            std::cout << "client disconnected" << std::endl;
+            output_socket_.close();
+        }
+    }
+
+    template<class __Socket>
+    void sendBytes( __Socket & socket, char const * bytes, uint32_t length )
+    {
+        uint32_t bytes_sent = 0;
+        while( bytes_sent < length )
+        {
+            int send_result = socket.sendBytes( bytes, length );
+            if( send_result < 0 ) throw messages::MessageException( "sendBytes() failed" );
+            else if( send_result == 0 ) std::cout << "output buffer full" << std::endl;
+            else bytes_sent += send_result;
+        }
     }
 
     template<class __Payload>
