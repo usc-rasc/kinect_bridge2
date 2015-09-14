@@ -6,6 +6,7 @@
 #include <Poco/Net/SocketAddress.h>
 #include <Poco/Net/StreamSocket.h>
 #include <Poco/Net/SocketStream.h>
+#include <Poco/MemoryStream.h>
 
 #include <atomics/binary_stream.h>
 
@@ -126,12 +127,41 @@ public:
 //            else throw messages::MessageException( "Failed to deserialize message; TCPInputDevice not initialized" );
 //        }
 
-        _InputStream input_stream( input_socket_ );
-        atomics::BinaryInputStream binary_stream( input_stream, atomics::BinaryInputStream::NETWORK_BYTE_ORDER );
-//        std::cout << "TCPInputDevice unpacking serializable from input stream" << std::endl;
-        serializable.unpack( binary_stream );
-        input_stream.flush();
-//        input_stream.close();
+        if( !input_socket_.impl()->initialized() ) throw messages::MessageException( "Failed to deserialize message; TCPInputDevice not initialized" );
+
+        char protocol_message[6];
+        receiveBytes( input_socket_, protocol_message, 6 );
+
+        if( protocol_message[0] != '<' || protocol_message[5] != '>' ) throw messages::MessageException( "Received invalid protocol message" );
+
+        uint32_t message_size = *reinterpret_cast<decltype(message_size)*>( protocol_message + 1 );
+
+        BinaryMessage<> raw_coded_message( NULL, message_size );
+        raw_coded_message.allocate();
+
+        receiveBytes( input_socket_, raw_coded_message.data_, raw_coded_message.size_ );
+
+        Poco::MemoryInputStream raw_input_stream( raw_coded_message.data_, raw_coded_message.size_ );
+        atomics::BinaryInputStream binary_reader( raw_input_stream, atomics::BinaryInputStream::NETWORK_BYTE_ORDER );
+
+        serializable.unpack( binary_reader );
+    }
+
+    template<class __Socket>
+    void receiveBytes( __Socket & socket, char * bytes, uint32_t length )
+    {
+        uint32_t bytes_received = 0;
+        while( bytes_received < length )
+        {
+            int receive_result = socket.receiveBytes( bytes, length );
+            if( receive_result < 0 ) throw messages::MessageException( "receiveBytes() failed" );
+            else if( receive_result == 0 )
+            {
+                std::cout << "server disconnected" << std::endl;
+                socket.close();
+            }
+            else bytes_received += receive_result;
+        }
     }
 
     template<class __Serializable>
