@@ -30,7 +30,7 @@ public:
 
     uint8_t type_;
 
-    ArithmeticMessageHeader( bool is_float, uint8_t depth, bool is_signed )
+    ArithmeticMessageHeader( bool is_float, bool is_signed, uint8_t depth )
     :
         type_( 0x00 )
     {
