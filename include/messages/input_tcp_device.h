@@ -91,6 +91,11 @@ public:
         updateInputState( std::forward<__Head>( head ), std::forward<__Args>( args )... );
     }
 
+    ~InputTCPDevice()
+    {
+        closeInput();
+    }
+
     template<class... __Args>
     void updateInputState( __Args&&... args )
     {
@@ -99,11 +104,16 @@ public:
         input_state_.source_port_ = std::get<1>( args_tuple );
     }
 
-    template<class... __Args>
-    void openInput( __Args&&... args )
+    void openInput()
     {
-        input_socket_ = Poco::Net::StreamSocket( Poco::Net::SocketAddress( std::forward<__Args>( args )... ) );
-        updateInputState( std::forward<__Args>( args )... );
+        openInput( input_state_.source_address_, input_state_.source_port_ );
+    }
+
+    template<class __Head, class... __Args>
+    void openInput( __Head&& head, __Args&&... args )
+    {
+        input_socket_ = Poco::Net::StreamSocket( Poco::Net::SocketAddress( std::forward<__Head>( head ), std::forward<__Args>( args )... ) );
+        updateInputState( std::forward<__Head>( head ), std::forward<__Args>( args )... );
     }
 
     void closeInput()
@@ -142,7 +152,8 @@ public:
         receiveBytes( input_socket_, raw_coded_message.data_, raw_coded_message.size_ );
 
         Poco::MemoryInputStream raw_input_stream( raw_coded_message.data_, raw_coded_message.size_ );
-        atomics::BinaryInputStream binary_reader( raw_input_stream, atomics::BinaryInputStream::NETWORK_BYTE_ORDER );
+        atomics::BinaryInputStream binary_reader( raw_input_stream );
+        binary_reader.readBOM();
 
         serializable.unpack( binary_reader );
     }
