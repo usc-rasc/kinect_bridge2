@@ -62,16 +62,7 @@ public:
         //
     }
 
-    std::string const & name() const
-    {
-        static std::string const name( "InputTCPDeviceMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( InputTCPDeviceMessage )
 };
 
 class InputTCPDevice
