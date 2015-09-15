@@ -29,16 +29,7 @@ public:
         archive >> stamp_;
     }
 
-    static std::string const & name()
-    {
-        static std::string const name( "TimeStampMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( TimeStampMessage )
 };
 
 class SequenceMessage : public SerializableInterface
@@ -66,16 +57,7 @@ public:
         archive >> sequence_;
     }
 
-    static std::string const & name()
-    {
-        static std::string const name( "SequenceMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( SequenceMessage )
 };
 
 class ChecksumMessageHeader : public MessageHeader
@@ -133,16 +115,7 @@ public:
         this->payload_.pack( archive );
     }
 
-    static std::string const & name()
-    {
-        static std::string const name( "ChecksumMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName()
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( ChecksumMessage )
 
     // default unpack from SerializableMessageInterface
 };
