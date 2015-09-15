@@ -96,7 +96,7 @@ public:
     template<class __Archive>
     void unpack( __Archive & archive )
     {
-        std::cout << "unpacking " << this->vName() << " via SerializableMessageInterface" << std::endl;
+//        std::cout << "unpacking " << this->vName() << " via SerializableMessageInterface" << std::endl;
         this->header_.unpack( archive );
         this->payload_.unpack( archive );
     }
@@ -104,7 +104,7 @@ public:
     template<class __Message, class __Archive>
     void unpack( __Message & message, __Archive & archive )
     {
-        std::cout << "delegating unpacking " << message.name() << " via SerializableMessageInterface" << std::endl;
+//        std::cout << "delegating unpacking " << message.name() << " via SerializableMessageInterface" << std::endl;
         message.unpackHeader( archive );
         message.unpackPayload( archive );
     }
