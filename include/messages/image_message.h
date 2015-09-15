@@ -38,7 +38,7 @@ public:
     template<class __Archive>
     void unpack( __Archive & archive )
     {
-        std::cout << "unpacking ImageMessageHeader" << std::endl;
+//        std::cout << "unpacking ImageMessageHeader" << std::endl;
         archive >> width_;
         archive >> height_;
         archive >> num_channels_;
@@ -69,16 +69,7 @@ public:
 
     // use default packing/unpacking from SerializableMessage
 
-    static std::string const & name()
-    {
-        static std::string const name( "ImageMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( ImageMessage )
 };
 
 #endif // _MESSAGES_IMAGEMESSAGE_H_
