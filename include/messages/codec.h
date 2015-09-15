@@ -63,16 +63,7 @@ public:
 
     // use default pack/unpack from SerializableMessage
 
-    static std::string const & name()
-    {
-        static std::string const name( "CodedMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( CodedMessage )
 };
 
 template<class __CodedMessage, class __Allocator = std::allocator<char> >
