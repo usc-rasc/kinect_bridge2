@@ -275,16 +275,7 @@ public:
         sf_close( sound_handle );
     }
 
-    static std::string const & name()
-    {
-        static std::string const name( "WAVAudioMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( WAVAudioMessage )
 };
 
 #endif // _MESSAGES_WAVAUDIOMESSAGE_H_
