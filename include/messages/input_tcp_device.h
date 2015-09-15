@@ -14,6 +14,8 @@
 #include <messages/binary_message.h>
 #include <messages/exceptions.h>
 
+#define INPUTTCPDEVICE_PROTOCOL_BUFSIZE 1024
+
 class InputTCPDeviceMessageHeader : public RecursiveMessageHeader
 {
 public:
@@ -80,6 +82,8 @@ public:
     Poco::Net::StreamSocket input_socket_;
     InputTCPDeviceMessageHeader input_state_;
 
+    char protocol_search_buf_[INPUTTCPDEVICE_PROTOCOL_BUFSIZE];
+
     InputTCPDevice() = default;
 
     // open the client socket and update our state
@@ -118,6 +122,32 @@ public:
 
     void closeInput()
     {
+        try
+        {
+            // the server should be polling on reads to see if we're still connected; signal shutdown by closing our send channel
+            std::cout << "sending shutdown to server" << std::endl;
+            input_socket_.shutdownSend();
+
+            // throw away any extra data on the line
+            std::cout << "reading extra data from server" << std::endl;
+
+            int receive_result = 0;
+            do
+            {
+                receive_result = input_socket_.receiveBytes( protocol_search_buf_, INPUTTCPDEVICE_PROTOCOL_BUFSIZE );
+                std::cout << "received: " << receive_result << std::endl;
+            }
+            while( receive_result > 0 );
+
+            // now we can close the receive channel
+            std::cout << "closing connection" << std::endl;
+            input_socket_.shutdownReceive();
+        }
+        catch( std::exception & e )
+        {
+            // any exceptions we catch here just mean the connection is already shutdown and cleared
+        }
+
         input_socket_.close();
     }
 
@@ -135,21 +165,66 @@ public:
 //            }
 //            // if the client isn't connected, we can't do anything; bail
 //            else throw messages::MessageException( "Failed to deserialize message; TCPInputDevice not initialized" );
-//        }
+//        _}
 
         if( !input_socket_.impl()->initialized() ) throw messages::MessageException( "Failed to deserialize message; TCPInputDevice not initialized" );
 
-        char protocol_message[6];
-        receiveBytes( input_socket_, protocol_message, 6 );
+        // assume next bytes are protocol message
+//        std::memset( protocol_search_buf_, 0, INPUTTCPDEVICE_PROTOCOL_BUFSIZE );
+        receiveBytes( input_socket_, protocol_search_buf_, 6 );
 
-        if( protocol_message[0] != '<' || protocol_message[5] != '>' ) throw messages::MessageException( "Received invalid protocol message" );
+        bool msg_found = protocol_search_buf_[0] == '<' && protocol_search_buf_[5] == '>';
+        size_t msg_begin = 0;
 
-        uint32_t message_size = *reinterpret_cast<decltype(message_size)*>( protocol_message + 1 );
+        uint32_t message_size = 0;
+
+        // check for valid protocol message; if failed, read until we find another one
+        while( !msg_found )
+        {
+            receiveBytes( input_socket_, protocol_search_buf_, INPUTTCPDEVICE_PROTOCOL_BUFSIZE );
+
+            std::string protocol_search_str( protocol_search_buf_ );
+
+            size_t start_point = 0;
+
+            do
+            {
+                msg_begin = protocol_search_str.find( '<', start_point );
+                if( msg_begin != std::string::npos )
+                {
+                    if( protocol_search_buf_[msg_begin + 5] == '>' )
+                    {
+                        msg_found = true;
+                        break;
+                    }
+
+                    start_point = msg_begin + 1;
+                }
+            }
+            while( start_point + 6 < INPUTTCPDEVICE_PROTOCOL_BUFSIZE );
+        }
+        size_t msg_end = msg_begin + 6;
+
+        message_size = decodeMessageSize( protocol_search_buf_ + msg_begin );
 
         BinaryMessage<> raw_coded_message( NULL, message_size );
         raw_coded_message.allocate();
 
-        receiveBytes( input_socket_, raw_coded_message.data_, raw_coded_message.size_ );
+        // if the protocol message was found part-way through the receive buffer
+        if( msg_begin > 0 )
+        {
+            // length of the message chunk we received (so everything after the protocol data)
+            uint32_t received_chunk_length = INPUTTCPDEVICE_PROTOCOL_BUFSIZE - msg_end;
+
+            // copy the rest of the input buffer into the raw message
+            std::memcpy( raw_coded_message.data_, protocol_search_buf_ + msg_end, received_chunk_length );
+            // receive the rest of the message
+            receiveBytes( input_socket_, raw_coded_message.data_ + received_chunk_length, message_size - received_chunk_length );
+        }
+        else
+        {
+            receiveBytes( input_socket_, raw_coded_message.data_, raw_coded_message.size_ );
+        }
 
         Poco::MemoryInputStream raw_input_stream( raw_coded_message.data_, raw_coded_message.size_ );
         atomics::BinaryInputStream binary_reader( raw_input_stream );
@@ -158,18 +233,23 @@ public:
         serializable.unpack( binary_reader );
     }
 
+    uint32_t decodeMessageSize( char * protocol_message )
+    {
+        return *reinterpret_cast<uint32_t *>( protocol_message + 1 );
+    }
+
     template<class __Socket>
     void receiveBytes( __Socket & socket, char * bytes, uint32_t length )
     {
         uint32_t bytes_received = 0;
         while( bytes_received < length )
         {
-            int receive_result = socket.receiveBytes( bytes, length );
+            int receive_result = socket.receiveBytes( bytes + bytes_received, length - bytes_received );
             if( receive_result < 0 ) throw messages::MessageException( "receiveBytes() failed" );
             else if( receive_result == 0 )
             {
                 std::cout << "server disconnected" << std::endl;
-                socket.close();
+                closeInput();
             }
             else bytes_received += receive_result;
         }
