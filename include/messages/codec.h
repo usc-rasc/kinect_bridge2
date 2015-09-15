@@ -7,12 +7,12 @@
 class CodedMessageHeader : public RecursiveMessageHeader
 {
 public:
-    std::string encoding_;
+    uint32_t encoding_;
     uint32_t decoded_size_;
 
-    CodedMessageHeader( std::string const & encoding = "", std::string const & payload_type = "", uint32_t decoded_size = 0 )
+    CodedMessageHeader( uint32_t encoding = 0, uint32_t payload_id = 0, uint32_t decoded_size = 0 )
     :
-        RecursiveMessageHeader( payload_type ),
+        RecursiveMessageHeader( payload_id ),
         encoding_( encoding ),
         decoded_size_( decoded_size )
     {
@@ -70,12 +70,12 @@ template<class __CodedMessage, class __Allocator = std::allocator<char> >
 class EncoderInterface : public NamedInterface
 {
 public:
-    virtual __CodedMessage encode( std::string const & message_type, char const * data, uint32_t size )
+    virtual __CodedMessage encode( uint32_t message_id, char const * data, uint32_t size )
     {
-        return encode( message_type, BinaryMessage<__Allocator>( data, size ) );
+        return encode( message_id, BinaryMessage<__Allocator>( data, size ) );
     }
 
-    virtual __CodedMessage encode( std::string const & message_type, BinaryMessage<__Allocator> const & message ) = 0;
+    virtual __CodedMessage encode( uint32_t message_id, BinaryMessage<__Allocator> const & message ) = 0;
 };
 
 template<class __CodedMessage, class __Allocator = std::allocator<char> >
