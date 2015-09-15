@@ -1,10 +1,26 @@
 #ifndef _MESSAGES_SERIALIZABLEMESSAGE_H_
 #define _MESSAGES_SERIALIZABLEMESSAGE_H_
 
-#include <messages/message.h>
 #include <string>
 //#include <memory>
 #include <iostream>
+
+#include <Poco/MD5Engine.h>
+
+#include <messages/message.h>
+#include <messages/macros.h>
+
+template<class __Message>
+static uint32_t MessageID()
+{
+    static Poco::MD5Engine md5_engine;
+    md5_engine.reset();
+    md5_engine.update( __Message::name() );
+    Poco::DigestEngine::Digest const digest = md5_engine.digest();
+
+    /* note that we only use the first 4 of 16 bytes of the digest here */
+    return *reinterpret_cast<uint32_t const *>( digest.data() );
+}
 
 class NamedInterface
 {
@@ -126,16 +142,7 @@ public:
 class EmptyMessage : public SerializableMessageInterface<EmptyHeader, EmptyPayload>
 {
 public:
-    static std::string const & name()
-    {
-        static std::string const name( "EmptyMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( EmptyMessage )
 };
 
 #endif // _MESSAGES_SERIALIZABLEMESSAGE_H_

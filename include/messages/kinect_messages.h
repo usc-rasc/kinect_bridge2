@@ -24,17 +24,7 @@ public:
     }
 
     // ====================================================================================================
-    std::string const & name() const
-    {
-        static std::string const name( "KinectColorImageMessage" );
-        return name;
-    }
-
-    // ====================================================================================================
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( KinectColorImageMessage )
 };
 
 // ####################################################################################################
@@ -70,17 +60,7 @@ public:
     }
 
     // ====================================================================================================
-    static std::string const & name()
-    {
-        static std::string const name( "KinectDepthImageInfoMessage" );
-        return name;
-    }
-
-    // ====================================================================================================
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( KinectDepthImageInfoMessage )
 };
 
 // ####################################################################################################
@@ -100,17 +80,7 @@ public:
     }
 
     // ====================================================================================================
-    std::string const & name() const
-    {
-        static std::string const name( "KinectDepthImageMessage" );
-        return name;
-    }
-
-    // ====================================================================================================
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( KinectDepthImageMessage )
 };
 
 // ####################################################################################################
@@ -130,17 +100,7 @@ public:
     }
 
     // ====================================================================================================
-    std::string const & name() const
-    {
-        static std::string const name( "KinectInfraredImageMessage" );
-        return name;
-    }
-
-    // ====================================================================================================
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( KinectInfraredImageMessage )
 };
 
 // ####################################################################################################
@@ -176,17 +136,7 @@ public:
     }
 
     // ====================================================================================================
-    static std::string const & name()
-    {
-        static std::string const name( "KinectAudioInfoMessage" );
-        return name;
-    }
-
-    // ====================================================================================================
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( KinectAudioInfoMessage )
 };
 
 // ####################################################################################################
@@ -206,17 +156,7 @@ public:
     }
 
     // ====================================================================================================
-    std::string const & name() const
-    {
-        static std::string const name( "KinectAudioMessage" );
-        return name;
-    }
-
-    // ====================================================================================================
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( KinectAudioMessage )
 };
 
 // ####################################################################################################
@@ -298,17 +238,7 @@ public:
     }
 
     // ====================================================================================================
-    static std::string const & name()
-    {
-        static std::string const name( "KinectJointMessage" );
-        return name;
-    }
-
-    // ====================================================================================================
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( KinectJointMessage )
 };
 
 // ####################################################################################################
@@ -371,17 +301,7 @@ public:
     }
 
     // ====================================================================================================
-    static std::string const & name()
-    {
-        static std::string const name( "KinectBodyMessage" );
-        return name;
-    }
-
-    // ====================================================================================================
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( KinectBodyMessage )
 };
 
 // ####################################################################################################
@@ -400,17 +320,7 @@ public:
     }
 
     // ====================================================================================================
-    std::string const & name() const
-    {
-        static std::string const name( "KinectBodiesMessage" );
-        return name;
-    }
-
-    // ====================================================================================================
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( KinectBodiesMessage )
 };
 
 // ####################################################################################################
@@ -443,17 +353,7 @@ public:
     }
 
     // ====================================================================================================
-    static std::string const & name()
-    {
-        static std::string const name( "KinectSpeechPhraseMessage" );
-        return name;
-    }
-
-    // ====================================================================================================
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( KinectSpeechPhraseMessage )
 };
 
 // ####################################################################################################
@@ -472,17 +372,7 @@ public:
     }
 
     // ====================================================================================================
-    std::string const & name() const
-    {
-        static std::string const name( "KinectSpeechMessage" );
-        return name;
-    }
-
-    // ====================================================================================================
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( KinectSpeechMessage )
 };
 
 #endif // _MESSAGES_KINECTMESSAGES_H_

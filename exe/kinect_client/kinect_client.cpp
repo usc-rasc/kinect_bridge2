@@ -102,7 +102,7 @@ public:
         auto & coded_header = coded_message.header_;
 //        std::cout << "processing message type: " << coded_message.header_.payload_type_ << std::endl;
 
-        if( coded_header.payload_type_ == "KinectSpeechMessage" )
+        if( coded_header.payload_id_ == KinectSpeechMessage::ID() )
         {
             auto kinect_speech_message = binary_message_coder_.decode<KinectSpeechMessage>( coded_message );
 
@@ -121,7 +121,7 @@ public:
 
             kinect_speech_pub_.publish( ros_kinect_speech_message );
         }
-        else if( coded_header.payload_type_ == "KinectBodiesMessage" )
+        else if( coded_header.payload_id_ == KinectBodiesMessage::ID() )
         {
             auto bodies_msg = binary_message_coder_.decode<KinectBodiesMessage>( coded_message );
 

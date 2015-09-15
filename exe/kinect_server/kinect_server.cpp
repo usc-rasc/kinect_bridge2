@@ -804,12 +804,12 @@ public:
 
             output_device_.push( *compressed_message_ptr );
 
-            if( compressed_message_ptr->header_.payload_type_ == "KinectColorImageMessage" ) num_color_ ++;
-            else if( compressed_message_ptr->header_.payload_type_ == "KinectDepthImageMessage" ) num_depth_ ++;
-            else if( compressed_message_ptr->header_.payload_type_ == "KinectInfraredImageMessage" ) num_infrared_ ++;
-            else if( compressed_message_ptr->header_.payload_type_ == "KinectAudioMessage" ) num_audio_ ++;
-            else if( compressed_message_ptr->header_.payload_type_ == "KinectBodiesMessage" ) num_bodies_ ++;
-            else if( compressed_message_ptr->header_.payload_type_ == "KinectSpeechMessage" ) num_speech_ ++;
+            if( compressed_message_ptr->header_.payload_id_ == _ColorImageMsg::ID() ) num_color_ ++;
+            else if( compressed_message_ptr->header_.payload_id_ == _DepthImageMsg::ID() ) num_depth_ ++;
+            else if( compressed_message_ptr->header_.payload_id_ == _InfraredImageMsg::ID() ) num_infrared_ ++;
+            else if( compressed_message_ptr->header_.payload_id_ == _AudioMsg::ID() ) num_audio_ ++;
+            else if( compressed_message_ptr->header_.payload_id_ == _BodiesMsg::ID() ) num_bodies_ ++;
+            else if( compressed_message_ptr->header_.payload_id_ == _SpeechMsg::ID() ) num_speech_ ++;
         }
     }
 };

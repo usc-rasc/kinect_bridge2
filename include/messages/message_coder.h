@@ -58,7 +58,7 @@ public:
 //        std::cout << "MessageCoder packed serializable to binary; size: " << binary_message.size_ << std::endl;
 
 //        std::cout << "MessageCoder encoding via " << __Codec::name() << std::endl;
-        return __Codec::encode( serializable.name(), std::move( binary_message ) );
+        return __Codec::encode( serializable.ID(), std::move( binary_message ) );
     }
 
     template<class __Base, class __Serializable>
@@ -80,7 +80,7 @@ public:
 //        std::cout << "MessageCoder packed serializable to binary; size: " << binary_message.size_ << std::endl;
 
 //        std::cout << "MessageCoder encoding via " << __Codec::name() << std::endl;
-        return __Codec::encode( serializable.name(), std::move( binary_message ) );
+        return __Codec::encode( serializable.ID(), std::move( binary_message ) );
     }
 
     template<class __Serializable>
