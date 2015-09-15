@@ -2,7 +2,8 @@
 #define _MESSAGES_OUTPUTTCPDEVICE_H_
 
 #include <string>
-#include <fstream>
+#include <thread>
+#include <memory>
 
 #include <Poco/Net/ServerSocket.h>
 #include <Poco/Net/SocketAddress.h>
@@ -81,10 +82,14 @@ class OutputTCPDevice
 public:
     typedef Poco::Net::SocketStream _OutputStream;
 
+    bool running_;
+
     Poco::Net::ServerSocket server_socket_;
     Poco::Net::StreamSocket output_socket_;
 
     OutputTCPDeviceMessageHeader output_state_;
+
+    std::shared_ptr<std::thread> check_client_thread_ptr_;
 
     OutputTCPDevice() = default;
 
@@ -92,10 +97,38 @@ public:
     template<class __Head, class... __Args>
     OutputTCPDevice( __Head && head, __Args&&... args )
     :
+        running_( true ),
         server_socket_( Poco::Net::SocketAddress( std::forward<__Head>( head ), std::forward<__Args>( args )... ) )
     {
         std::cout << "server listening on " << server_socket_.address().toString() << std::endl;
         updateOutputState( std::forward<__Head>( head ), std::forward<__Args>( args )... );
+    }
+
+    ~OutputTCPDevice()
+    {
+        closeOutput();
+    }
+
+    void checkClientTask()
+    {
+        while( running_ )
+        {
+            std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+            if( output_socket_.impl()->initialized() && !checkClientConnection() )
+            {
+                try
+                {
+                    output_socket_.shutdown();
+                }
+                catch( std::exception & e )
+                {
+                    std::cout << "checkClientTask(): " << e.what() << std::endl;
+                }
+
+                output_socket_.close();
+                break;
+            }
+        }
     }
 
     template<class... __Args>
@@ -117,39 +150,43 @@ public:
 
     void closeOutput()
     {
-        // close the socket to the client
+        std::cout << "closing output" << std::endl;
+        running_ = false;
+        try
+        {
+            // close the socket to the client
+            std::cout << "shutting down output socket" << std::endl;
+            output_socket_.shutdown();
+        }
+        catch( std::exception & e )
+        {
+            std::cout << "closeOutput(): " << e.what() << std::endl;
+        }
+
+        std::cout << "closing output socket" << std::endl;
         output_socket_.close();
+
         // close the server socket
+        std::cout << "closing server socket" << std::endl;
         server_socket_.close();
+
+        try
+        {
+            if( check_client_thread_ptr_ ) check_client_thread_ptr_->join();
+        }
+        catch( std::exception & e )
+        {
+            std::cout << "closeOutput(): " << e.what() << std::endl;
+        }
     }
 
     template<class __Serializable>
     void push( __Serializable & serializable )
     {
+        // if the server itself hasn't been initialized, then something is wrong; bail
         if( !server_socket_.impl()->initialized() ) throw messages::MessageException( "Failed to serialize message; TCPOutputDevice not initialized" );
 
-        // make sure stream is open
-//        if( !server_stream_ )
-//        {
-//            // if not, check whether the server socket is ready
-//            if( server_socket_.impl().initialized() )
-//            {
-//                // if it is, we'll wait for new clients
-//                server_stream_ = server_socket_.acceptConnection();
-//            }
-//            // if the server isn't ready, then we can't run this operation right now; bail
-//            else throw messages::MessageException( "Failed to serialize message; TCPOutputDevice not initialized" );
-//        }
-
-        // check whether the output socket is ready
-        if( !output_socket_.impl()->initialized() )
-        {
-            // if it isn't, we'll wait for new clients; otherwise we already have a connection to the client
-            std::cout << "can't push; waiting for client connection" << std::endl;
-            Poco::Net::SocketAddress client_address;
-            output_socket_ = server_socket_.acceptConnection( client_address );
-            std::cout << "accepted connection from client " << client_address.toString() << std::endl;
-        }
+        establishClientConnection();
 
         MessageCoder<BinaryCodec<> > binary_coder;
 
@@ -162,28 +199,65 @@ public:
 
         *reinterpret_cast<decltype(message_size)*>( protocol_message + 1 ) = message_size;
 
-        // check if the client has disconnected and reset output_socket_ if necessary
         try
         {
             // send protocol-layer message
-            sendBytes( output_socket_, protocol_message, 6 );
+            sendBytes( protocol_message, 6 );
             // send actual message
-            sendBytes( output_socket_, binary_coded_message.payload_.data_, message_size );
+            sendBytes( binary_coded_message.payload_.data_, message_size );
         }
         catch( messages::MessageException & e )
         {
-            std::cout << "client disconnected: " << e.what() << std::endl;
+            std::cout << "failed to send data: " << e.what() << std::endl;
+            output_socket_.shutdown();
             output_socket_.close();
         }
     }
 
-    template<class __Socket>
-    void sendBytes( __Socket & socket, char const * bytes, uint32_t length )
+    void establishClientConnection()
     {
+        // check whether the output socket is ready
+        if( !output_socket_.impl()->initialized() )
+        {
+            // if it isn't, we'll wait for new clients; otherwise we already have a connection to the client
+            std::cout << "can't push; waiting for client connection" << std::endl;
+            Poco::Net::SocketAddress client_address;
+            output_socket_ = server_socket_.acceptConnection( client_address );
+            std::cout << "accepted connection from client " << client_address.toString() << std::endl;
+
+            // (re)start client monitoring thread
+            if( check_client_thread_ptr_ ) check_client_thread_ptr_->join();
+            check_client_thread_ptr_ = std::make_shared<std::thread>( &OutputTCPDevice::checkClientTask, this );
+        }
+    }
+
+    bool checkClientConnection()
+    {
+        // check if the client is still connected by attempting a read
+        char read_buf;
+        try
+        {
+            if( output_socket_.receiveBytes( &read_buf, 1 ) == 0 )
+            {
+                std::cout << "client disconnected; can't read" << std::endl;
+                return false;
+            }
+        }
+        catch( std::exception & e )
+        {
+            std::cout << "checkClientConnection(): " << e.what() << std::endl;
+            return false;
+        }
+        return true;
+    }
+
+    void sendBytes( char const * bytes, uint32_t length )
+    {
+        if( !output_socket_.impl()->initialized() ) throw messages::MessageException( "Failed to send data; socket not initialized" );
         uint32_t bytes_sent = 0;
         while( bytes_sent < length )
         {
-            int send_result = socket.sendBytes( bytes, length );
+            int send_result = output_socket_.sendBytes( bytes + bytes_sent, length - bytes_sent );
             if( send_result < 0 ) throw messages::MessageException( "sendBytes() failed" );
             else if( send_result == 0 ) std::cout << "output buffer full" << std::endl;
             else bytes_sent += send_result;
