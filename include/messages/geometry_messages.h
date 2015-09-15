@@ -134,16 +134,7 @@ public:
         return this->payload_;
     }
 
-    static std::string const & name()
-    {
-        static std::string const name( "ArithmeticMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( ArithmeticMessage )
 };
 
 template<class __Data, uint8_t __Dim>
@@ -160,16 +151,7 @@ public:
         //
     }
 
-    static std::string const & name()
-    {
-        static std::string const name( "PointMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( PointMessage )
 };
 
 typedef PointMessage<float, 3> Point3Message;
