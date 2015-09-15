@@ -135,6 +135,19 @@ public:
         return serializable;
     }
 
+    // decode CodedMessage from BinaryMessage storage
+    _CodedMessage decode( BinaryMessage<_Allocator> const & raw_coded_message )
+    {
+        Poco::MemoryInputStream raw_input_stream( raw_coded_message.data_, raw_coded_message.size_ );
+        _BinaryReader binary_reader( raw_input_stream, _BinaryReader::NETWORK_BYTE_ORDER );
+
+        _CodedMessage coded_message;
+
+        coded_message.unpack( binary_reader );
+
+        return coded_message;
+    }
+
 /*
     // special function to just peek at the header so others can decide if they need to unpack the rest of the message
     template<class __Serializable>

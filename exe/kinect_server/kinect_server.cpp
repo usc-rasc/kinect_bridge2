@@ -802,7 +802,6 @@ public:
                 input_handle->pop_front();
             }
 
-            std::cout << "pushing message out to network" << std::endl;
             output_device_.push( *compressed_message_ptr );
 
             if( compressed_message_ptr->header_.payload_type_ == "KinectColorImageMessage" ) num_color_ ++;
@@ -851,7 +850,7 @@ int main()
         }
     }
 
-    OutputTCPDevice output_device( "localhost", 5903 );
+    OutputTCPDevice output_device( "asus-n550j-1.home", 5903 );
     std::cout << "listening for clients on " << output_device.server_socket_.address().toString() << std::endl;
 
     ColorImageCompressTask::_MessageCoder color_image_message_coder;
@@ -911,7 +910,7 @@ int main()
 //    read_pool.start( depth_image_read_task );
 //    read_pool.start( infrared_image_read_task );
 //    read_pool.start( audio_read_task );
-//    read_pool.start( bodies_read_task );
+    read_pool.start( bodies_read_task );
     read_pool.start( speech_read_task );
 
     // use the main thread to produce status updates while program is running
@@ -971,8 +970,6 @@ int main()
     std::cout << "compress speech task done" << std::endl;
 */
 
-    std::cout << "compression threads stopped" << std::endl;
-
     // at this point, all compression threads should have empty inputs, so we can shut them down
     color_image_compress_task.running_ = false;
     depth_image_compress_task.running_ = false;
@@ -991,7 +988,9 @@ int main()
     // wait for compression threads to stop
     compress_pool.joinAll();
 
-    std::cout << "compress threads stopped" << std::endl;
+    std::cout << "compression threads stopped" << std::endl;
+
+    write_task.output_device_.closeOutput();
 
     // ping compression inputs until they're empty, then stop the write threads
     while( !compress_fifo->empty() ) compress_fifo.getCondition().notify_one();
