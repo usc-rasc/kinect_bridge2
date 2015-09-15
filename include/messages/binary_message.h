@@ -204,16 +204,7 @@ public:
         _Message::unpack( *this, archive );
     }
 
-    static std::string const & name()
-    {
-        static std::string const name( "BinaryMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( BinaryMessage )
 };
 
 #endif // _MESSAGES_BINARYMESSAGE_H_
