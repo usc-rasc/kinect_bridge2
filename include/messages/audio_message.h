@@ -60,16 +60,7 @@ public:
         //
     }
 
-    static std::string const & name()
-    {
-        static std::string const name( "AudioMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( AudioMessage )
 };
 
 #endif // _MESSAGES_AUDIOMESSAGE_H_

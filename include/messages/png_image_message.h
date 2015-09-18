@@ -293,16 +293,7 @@ public:
         std::cout << "PNGImageMessage done unpacking from archive" << std::endl;
     }
 
-    static std::string const & name()
-    {
-        static std::string const name( "PNGImageMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( PNGImageMessage )
 };
 
 #endif // _MESSAGES_PNGIMAGEMESSAGE_H_

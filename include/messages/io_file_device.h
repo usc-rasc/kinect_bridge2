@@ -37,16 +37,7 @@ public:
         //
     }
 
-    static std::string const & name()
-    {
-        static std::string const name( "IOFileDeviceMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( IOFileDeviceMessage )
 };
 
 class IOFileDevice : public InputFileDevice, public OutputFileDevice

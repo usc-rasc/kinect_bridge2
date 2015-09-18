@@ -35,7 +35,7 @@ public:
     }
 */
 
-    virtual _CodedMessage encode( std::string const & message_type, BinaryMessage<__Allocator> const & binary_message )
+    virtual _CodedMessage encode( uint32_t message_id, BinaryMessage<__Allocator> const & binary_message )
     {
 //        std::cout << name() << " encoding " << message_type << std::endl;
         // set up output archive
@@ -64,7 +64,7 @@ public:
 
 //        std::cout << "built coded message (encoding: " << name() << " encoded_message: " << message_type << " size (encoded): " << encoded_message.size_ << " size (decoded): " << binary_message.size_ << ")" << std::endl;
         // build our _CodedMessage; fill out the header and copy the payload from the encoder's data
-        return _CodedMessage( typename _CodedMessage::_Header( name(), message_type, binary_message.size_ ), std::move( encoded_message ) );
+        return _CodedMessage( typename _CodedMessage::_Header( ID(), message_id, binary_message.size_ ), std::move( encoded_message ) );
 //        return _CodedMessage( typename _CodedMessage::_Header( name(), message_type, encoded_message.size(), binary_message.size_ ), typename _CodedMessage::_Payload( encoded_message.data(), encoded_message.size() ) );
     }
 
@@ -100,16 +100,7 @@ public:
     }
 */
 
-    static std::string const & name()
-    {
-        static std::string const name( "BinaryCodec" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( BinaryCodecMessage )
 };
 
 #endif // _MESSAGES_BINARYCODEC_H_

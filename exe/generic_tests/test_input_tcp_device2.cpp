@@ -39,7 +39,7 @@ int main( int argc, char ** argv )
             // pull in one message
             input_tcp_device.pull( message );
 
-            std::cout << "got message: " << message.header_.encoding_ << " | " << message.header_.payload_type_ << std::endl;
+            std::cout << "got message: " << message.header_.encoding_ << " | " << message.header_.payload_id_ << std::endl;
             std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
         }
 

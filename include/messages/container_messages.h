@@ -1,20 +1,21 @@
 #ifndef _MESSAGES_CONTAINERMESSAGES_H_
 #define _MESSAGES_CONTAINERMESSAGES_H_
 
-#include <messages/serializable_message.h>
 #include <tuple>
 #include <vector>
 #include <array>
 #include <memory>
 
+#include <messages/serializable_message.h>
+
 class RecursiveMessageHeader : public MessageHeader
 {
 public:
-    std::string payload_type_;
+    uint32_t payload_id_;
 
-    RecursiveMessageHeader( std::string const & payload_type = "" )
+    RecursiveMessageHeader( uint32_t const & payload_id = 0 )
     :
-        payload_type_( payload_type )
+        payload_id_( payload_id )
     {
         //
     }
@@ -22,13 +23,13 @@ public:
     template<class __Archive>
     void pack( __Archive & archive ) const
     {
-        archive << payload_type_;
+        archive << payload_id_;
     }
 
     template<class __Archive>
     void unpack( __Archive & archive )
     {
-        archive >> payload_type_;
+        archive >> payload_id_;
     }
 };
 
@@ -38,21 +39,12 @@ class RecursiveMessage : public RecursiveMessageHeader
 public:
     RecursiveMessage()
     :
-        RecursiveMessageHeader( __Base::name() )
+        RecursiveMessageHeader( __Base::ID() )
     {
         //
     }
 
-    static std::string const & name()
-    {
-        static std::string const name( "RecursiveMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( RecursiveMessage )
 };
 
 class VectorMessageHeader : public RecursiveMessageHeader
@@ -60,9 +52,9 @@ class VectorMessageHeader : public RecursiveMessageHeader
 public:
     uint32_t size_;
 
-    VectorMessageHeader( std::string const & payload_type = "", uint32_t size = 0 )
+    VectorMessageHeader( uint32_t payload_id = 0, uint32_t size = 0 )
     :
-        RecursiveMessageHeader( payload_type ),
+        RecursiveMessageHeader( payload_id ),
         size_( size )
     {
         //
@@ -95,7 +87,7 @@ public:
 
     VectorMessage( uint32_t size = 0 )
     :
-        _Message( VectorMessageHeader( __Payload::name(), size ), std::vector<__Payload>( size ) )
+        _Message( VectorMessageHeader( __Payload::ID(), size ), std::vector<__Payload>( size ) )
     {
         //
     }
@@ -161,16 +153,7 @@ public:
         this->payload_.resize( size );
     }
 
-    static std::string const & name()
-    {
-        static std::string const name( "VectorMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( VectorMessage )
 };
 
 class ArrayMessageHeader : public RecursiveMessageHeader
@@ -178,9 +161,9 @@ class ArrayMessageHeader : public RecursiveMessageHeader
 public:
     uint32_t size_;
 
-    ArrayMessageHeader( std::string const & payload_type = "", uint32_t size = 0 )
+    ArrayMessageHeader( uint32_t payload_id = 0, uint32_t size = 0 )
     :
-        RecursiveMessageHeader( payload_type ),
+        RecursiveMessageHeader( payload_id ),
         size_( size )
     {
         //
@@ -280,7 +263,7 @@ public:
     ArrayHelper( __Iterator array_it )
     :
         ArrayHelper<__Data, 4-1>( array_it ),
-        w( *array_it++ )
+        w( *(array_it += 3) )
     {
         //
     }
@@ -299,7 +282,7 @@ public:
     ArrayHelper( __Iterator array_it )
     :
         ArrayHelper<__Data, 3-1>( array_it ),
-        z( *array_it ),
+        z( *(array_it += 2) ),
         theta( *array_it ),
         yaw( *array_it++ )
     {
@@ -312,9 +295,9 @@ class ArrayHelper<__Data, 2>
 {
 public:
     __Data & x;
-    __Data & y;
-
     __Data & roll;
+
+    __Data & y;
     __Data & pitch;
 
     template<class __Iterator>
@@ -339,7 +322,7 @@ public:
     template<class... __Args>
     ArrayMessage( __Args&&... args )
     :
-        _Message( ArrayMessageHeader( __Payload::name(), __Dim ), std::array<__Payload, __Dim>( std::forward<__Args>( args )... ) ),
+        _Message( ArrayMessageHeader( __Payload::ID(), __Dim ), std::array<__Payload, __Dim>( std::forward<__Args>( args )... ) ),
         ArrayHelper<__Payload, __Dim>( this->payload_.begin() )
     {
         //
@@ -409,16 +392,7 @@ public:
         return at( index );
     }
 
-    static std::string const & name()
-    {
-        static std::string const name( "ArrayMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( ArrayMessage )
 };
 
 template<class __Primary, class... __Others>
@@ -452,7 +426,7 @@ public:
     void packImpl( __Archive & archive )
     {
         auto & message = std::get<__Index - 1>( types_ );
-        archive << message.name();
+        archive << message.ID();
         message.pack( archive );
 
         packImpl<__Archive, __Index - 1>( archive );
@@ -507,8 +481,8 @@ public:
     template<class __Archive, uint32_t __Index, typename std::enable_if<(__Index>0), int>::type = 0>
     void unpackImpl( __Archive & archive )
     {
-        std::string name;
-        archive >> name;
+        uint32_t id;
+        archive >> id;
 
         auto & message = std::get<__Index - 1>( types_ );
         message.unpack( archive );
@@ -567,16 +541,7 @@ public:
     }
 */
 
-    static std::string const & name()
-    {
-        static std::string const name( "TupleMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( TupleMessage )
 };
 
 template<class __Primary, class... __Others>
@@ -692,16 +657,7 @@ public:
         return getComponent<__Primary>();
     }
 
-    static std::string const & name()
-    {
-        static std::string const name( "MultiMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( MultiMessage )
 };
 
 #endif // _MESSAGES_CONTAINERMESSAGES_H_

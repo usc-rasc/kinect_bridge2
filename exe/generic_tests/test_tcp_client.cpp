@@ -44,7 +44,7 @@ int main()
         input_tcp_device.pull( binary_coded_message );
 
         std::cout << binary_coded_message.header_.encoding_ << std::endl;
-        std::cout << binary_coded_message.header_.payload_type_ << std::endl;
+        std::cout << binary_coded_message.header_.payload_id_ << std::endl;
         std::cout << binary_coded_message.header_.decoded_size_ << std::endl;
 
         std::this_thread::sleep_for( std::chrono::seconds( 30 ) );

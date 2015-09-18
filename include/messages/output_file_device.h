@@ -52,16 +52,7 @@ public:
         //
     }
 
-    std::string const & name() const
-    {
-        static std::string const name ( "OutputFileDeviceMessage" );
-        return name;
-    }
-
-    virtual std::string const & vName() const
-    {
-        return name();
-    }
+    DECLARE_MESSAGE_INFO( OutputFileDeviceMessage )
 };
 
 class OutputFileDevice
