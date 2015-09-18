@@ -280,7 +280,7 @@ public:
     ArrayHelper( __Iterator array_it )
     :
         ArrayHelper<__Data, 4-1>( array_it ),
-        w( *array_it++ )
+        w( *(array_it += 3) )
     {
         //
     }
@@ -299,7 +299,7 @@ public:
     ArrayHelper( __Iterator array_it )
     :
         ArrayHelper<__Data, 3-1>( array_it ),
-        z( *array_it ),
+        z( *(array_it += 2) ),
         theta( *array_it ),
         yaw( *array_it++ )
     {
@@ -312,9 +312,9 @@ class ArrayHelper<__Data, 2>
 {
 public:
     __Data & x;
-    __Data & y;
-
     __Data & roll;
+
+    __Data & y;
     __Data & pitch;
 
     template<class __Iterator>
