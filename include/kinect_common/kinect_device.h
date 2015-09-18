@@ -1056,35 +1056,40 @@ public:
             KinectBodyMessage body_msg;
 //            auto & body_msg = bodies_message[bodies_idx];
 
-            body->get_IsTracked( &body_msg.is_tracked_ );
-            body->get_HandLeftState( reinterpret_cast<HandState *>( &body_msg.hand_state_left_ ) );
-            body->get_HandRightState( reinterpret_cast<HandState *>( &body_msg.hand_state_right_ ) );
+            if( FAILED( body->get_IsTracked( &body_msg.is_tracked_ ) ) ) throw KinectException( "Failed to get body tracking state" );
+            if( FAILED( body->get_HandLeftState( reinterpret_cast<HandState *>( &body_msg.hand_state_left_ ) ) ) ) throw KinectException( "Failed to get left hand state" );
+            if( FAILED( body->get_HandRightState( reinterpret_cast<HandState *>( &body_msg.hand_state_right_ ) ) ) ) throw KinectException( "Failed to get right hand state" );
+            if( FAILED( body->get_TrackingId( &body_msg.tracking_id_ ) ) ) throw KinectException( "Failed to get body tracking ID" );
 
-            std::array<Joint, JointType_Count> joint_points;
-            std::array<JointOrientation, JointType_Count> joint_orientations;
-
-            auto & joints_msg = body_msg.joints_;
-
-            if( joints_msg.size() < JointType_Count ) joints_msg.resize( JointType_Count );
-            body->GetJoints( joint_points.size(), joint_points.data() );
-
-            for( size_t joints_idx = 0; joints_idx < joint_points.size(); ++joints_idx )
+            // only fill out joint info if body is tracked
+            if( body_msg.is_tracked_ )
             {
-                auto & joint_point = joint_points[joints_idx];
-                auto & joint_orientation = joint_orientations[joints_idx];
-                auto & joint_msg = joints_msg[joints_idx];
+                std::array<Joint, JointType_Count> joint_points;
+                std::array<JointOrientation, JointType_Count> joint_orientations;
 
-                joint_msg.position_.x = joint_point.Position.X;
-                joint_msg.position_.y = joint_point.Position.Y;
-                joint_msg.position_.z = joint_point.Position.Z;
+                auto & joints_msg = body_msg.joints_;
 
-                joint_msg.orientation_.x = joint_orientation.Orientation.x;
-                joint_msg.orientation_.y = joint_orientation.Orientation.y;
-                joint_msg.orientation_.z = joint_orientation.Orientation.z;
-                joint_msg.orientation_.w = joint_orientation.Orientation.w;
+                if( joints_msg.size() < JointType_Count ) joints_msg.resize( JointType_Count );
+                body->GetJoints( joint_points.size(), joint_points.data() );
 
-                joint_msg.joint_type_ = static_cast<KinectJointMessage::JointType>( joint_point.JointType );
-                joint_msg.tracking_state_ = static_cast<KinectJointMessage::TrackingState>( joint_point.TrackingState );
+                for( size_t joints_idx = 0; joints_idx < joint_points.size(); ++joints_idx )
+                {
+                    auto & joint_point = joint_points[joints_idx];
+                    auto & joint_orientation = joint_orientations[joints_idx];
+                    auto & joint_msg = joints_msg[joints_idx];
+
+                    joint_msg.position_.x = joint_point.Position.X;
+                    joint_msg.position_.y = joint_point.Position.Y;
+                    joint_msg.position_.z = joint_point.Position.Z;
+
+                    joint_msg.orientation_.x = joint_orientation.Orientation.x;
+                    joint_msg.orientation_.y = joint_orientation.Orientation.y;
+                    joint_msg.orientation_.z = joint_orientation.Orientation.z;
+                    joint_msg.orientation_.w = joint_orientation.Orientation.w;
+
+                    joint_msg.joint_type_ = static_cast<KinectJointMessage::JointType>( joint_point.JointType );
+                    joint_msg.tracking_state_ = static_cast<KinectJointMessage::TrackingState>( joint_point.TrackingState );
+                }
             }
 
             payload.emplace_back( std::move( body_msg ) );
