@@ -302,6 +302,7 @@ public:
     uint8_t is_tracked_;
     HandState hand_state_left_;
     HandState hand_state_right_;
+    uint64_t tracking_id_;
 
     // ====================================================================================================
     KinectBodyMessage()
@@ -310,7 +311,8 @@ public:
         joints_( this->payload_ ),
         is_tracked_( 0 ),
         hand_state_left_( HandState::UNKNOWN ),
-        hand_state_right_( HandState::UNKNOWN )
+        hand_state_right_( HandState::UNKNOWN ),
+        tracking_id_( 0 )
     {
         //
     }
@@ -322,6 +324,7 @@ public:
         archive << is_tracked_;
         archive << static_cast<uint8_t>( hand_state_left_ );
         archive << static_cast<uint8_t>( hand_state_right_ );
+        archive << tracking_id_;
         _Message::pack( archive );
     }
 
@@ -338,6 +341,8 @@ public:
         uint8_t hand_state_right;
         archive >> hand_state_right;
         hand_state_right_ = static_cast<HandState>( hand_state_right );
+
+        archive >> tracking_id_;
 
         _Message::unpack( archive );
     }
