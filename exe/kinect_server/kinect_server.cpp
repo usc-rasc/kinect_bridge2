@@ -827,10 +827,36 @@ BOOL WINAPI sigkillHandler( DWORD signal )
     return TRUE;
 }
 
-int main()
+int main( int argc, char ** argv )
 {
     // ctrl-c detection for windows
     SetConsoleCtrlHandler( sigkillHandler, TRUE );
+
+    // parse command-line opts
+    std::string listen_ip( "localhost" );
+    uint32_t listen_port( 5903 );
+
+    for( size_t i = 0; i < argc; ++i )
+    {
+        std::string const arg = argv[i];
+        if( arg == "--help" || arg == "-h" )
+        {
+            std::cout << "options: " << std::endl;
+            std::cout << "  --listen-ip <hostname or ip>" << std::endl;
+            std::cout << "  --listne-port <port number>" << std::endl;
+            return 0;
+        }
+        else if( arg == "--listen-ip" )
+        {
+            listen_ip = argv[++i];
+        }
+        else if( arg == "--listen-port" )
+        {
+            std::stringstream ss;
+            ss << argv[++i];
+            ss >> listen_port;
+        }
+    }
 
     KinectDevice kinect_device;
 
@@ -850,7 +876,7 @@ int main()
         }
     }
 
-    OutputTCPDevice output_device( "asus-n550j-1.home", 5903 );
+    OutputTCPDevice output_device( listen_ip, listen_port );
     std::cout << "listening for clients on " << output_device.server_socket_.address().toString() << std::endl;
 
     ColorImageCompressTask::_MessageCoder color_image_message_coder;
