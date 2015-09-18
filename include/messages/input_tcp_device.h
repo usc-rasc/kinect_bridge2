@@ -83,6 +83,7 @@ public:
     :
         input_socket_( Poco::Net::SocketAddress( std::forward<__Head>( head ), std::forward<__Args>( args )... ) )
     {
+        std::cout << "client connected on " << input_socket_.address().toString() << std::endl;
         updateInputState( std::forward<__Head>( head ), std::forward<__Args>( args )... );
     }
 

@@ -47,10 +47,18 @@ public:
         nh_rel_( nh_rel ),
         kinect_speech_pub_( nh_rel_.advertise<_KinectSpeechMsg>( "speech", 10 ) ),
         kinect_bodies_pub_( nh_rel_.advertise<_KinectBodiesMsg>( "bodies", 10 ) ),
-        kinect_bridge_client_( "asus-n550j-1", 5903 ),
+        kinect_bridge_client_( getParam<std::string>( nh_rel_, "server_ip", "localhost" ), getParam<int>( nh_rel_, "server_port", 5903 ) ),
         message_count_( 0 )
     {
         //
+    }
+
+    template<class __Data>
+    static __Data getParam( ros::NodeHandle & nh, std::string const & param_name, __Data const & default_value )
+    {
+        __Data result;
+        if( nh.getParam( param_name, result ) ) return result;
+        return default_value;
     }
 
     void spin()
