@@ -18,6 +18,8 @@
 
 #include <ros/ros.h>
 
+#include <tf/transform_broadcaster.h>
+
 #include <kinect_bridge2/KinectSpeech.h>
 #include <kinect_bridge2/KinectBodies.h>
 
@@ -41,6 +43,8 @@ public:
     uint32_t message_count_;
 
     MessageCoder<BinaryCodec<> > binary_message_coder_;
+
+    tf::TransformBroadcaster transform_broadcaster_;
 
     KinectBridge2Client( ros::NodeHandle & nh_rel )
     :
@@ -138,6 +142,10 @@ public:
 
             _KinectBodiesMsg ros_bodies_msg;
 
+            // get map of KinectJointMessage::JointType -> human-readable name
+            auto const & joint_names_map = KinectJointMessage::getJointNamesMap();
+
+            // for each body message
             for( size_t body_idx = 0; body_idx < payload.size(); ++body_idx )
             {
                 _KinectBodyMsg ros_body_msg;
@@ -150,6 +158,10 @@ public:
                 auto const & joints_msg = body_msg.joints_;
                 auto & ros_joints_msg = ros_body_msg.joints;
 
+                std::stringstream tf_frame_basename_ss;
+                tf_frame_basename_ss << "/kinect_client/skeleton" << body_idx << "/";
+
+                // for each joint message
                 for( size_t joint_idx = 0; joint_idx < joints_msg.size(); ++joint_idx )
                 {
                     auto const & joint_msg = joints_msg[joint_idx];
@@ -168,12 +180,17 @@ public:
                     ros_joint_msg.orientation.w = joint_msg.orientation_.w;
 
                     ros_joints_msg.emplace_back( std::move( ros_joint_msg ) );
+
+                    tf::Transform const joint_transform
+                    (
+                        tf::Quaternion( joint_msg.orientation_.x, joint_msg.orientation_.y, joint_msg.orientation_.z, joint_msg.orientation_.w ).normalized(),
+                        tf::Vector3( joint_msg.position_.x, joint_msg.position_.y, joint_msg.position_.z )
+                    );
+                    transform_broadcaster_.sendTransform( tf::StampedTransform( joint_transform, ros::Time::now(), "/kinect", tf_frame_basename_ss.str() + joint_names_map.find(joint_msg.joint_type_)->second ) );
                 }
                 ros_bodies_msg.bodies.emplace_back( std::move( ros_body_msg ) );
             }
             kinect_bodies_pub_.publish( ros_bodies_msg );
-
-            // TODO: TF stuff here
         }
     }
 };

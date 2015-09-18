@@ -1,6 +1,8 @@
 #ifndef _MESSAGES_KINECTMESSAGES_H_
 #define _MESSAGES_KINECTMESSAGES_H_
 
+#include <map>
+
 #include <messages/container_messages.h>
 #include <messages/utility_messages.h>
 #include <messages/image_message.h>
@@ -198,6 +200,46 @@ public:
         INFERRED = 1,
         TRACKED = 2
     };
+
+    typedef std::map<JointType, std::string> _JointNamesMap;
+
+    static _JointNamesMap buildJointNamesMap()
+    {
+        _JointNamesMap joint_names_map;
+        joint_names_map[JointType::SPINE_BASE] = "spine_base";
+        joint_names_map[JointType::SPINE_MID] = "spine_mid";
+        joint_names_map[JointType::NECK] = "neck";
+        joint_names_map[JointType::HEAD] = "head";
+        joint_names_map[JointType::SHOULDER_LEFT] = "shoulder_left";
+        joint_names_map[JointType::ELBOW_LEFT] = "elbow_left";
+        joint_names_map[JointType::WRIST_LEFT] = "wrist_left";
+        joint_names_map[JointType::HAND_LEFT] = "hand_left";
+        joint_names_map[JointType::SHOULDER_RIGHT] = "shoulder_right";
+        joint_names_map[JointType::ELBOW_RIGHT] = "elbow_right";
+        joint_names_map[JointType::WRIST_RIGHT] = "wrist_right";
+        joint_names_map[JointType::HAND_RIGHT] = "hand_right";
+        joint_names_map[JointType::HIP_LEFT] = "hip_left";
+        joint_names_map[JointType::KNEE_LEFT] = "knee_left";
+        joint_names_map[JointType::ANKLE_LEFT] = "ankle_left";
+        joint_names_map[JointType::FOOT_LEFT] = "foot_left";
+        joint_names_map[JointType::HIP_RIGHT] = "hip_right";
+        joint_names_map[JointType::KNEE_RIGHT] = "knee_right";
+        joint_names_map[JointType::ANKLE_RIGHT] = "ankle_right";
+        joint_names_map[JointType::FOOT_RIGHT] = "foot_right";
+        joint_names_map[JointType::SPINE_SHOULDER] = "spine_shoulder";
+        joint_names_map[JointType::HANDTIP_LEFT] = "handtip_left";
+        joint_names_map[JointType::THUMB_LEFT] = "thumb_left";
+        joint_names_map[JointType::HANDTIP_RIGHT] = "handtip_right";
+        joint_names_map[JointType::THUMB_RIGHT] = "thumb_right";
+        return joint_names_map;
+    }
+
+    static _JointNamesMap const & getJointNamesMap()
+    {
+        static _JointNamesMap const & joint_names_map( buildJointNamesMap() );
+
+        return joint_names_map;
+    }
 
     PointMessage<float, 3> position_;
     PointMessage<float, 4> orientation_;
