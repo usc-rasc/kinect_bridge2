@@ -178,7 +178,7 @@ public:
                         tf::Quaternion( joint_msg.orientation_.x, joint_msg.orientation_.y, joint_msg.orientation_.z, joint_msg.orientation_.w ).normalized(),
                         tf::Vector3( joint_msg.position_.x, joint_msg.position_.y, joint_msg.position_.z )
                     );
-                    transform_broadcaster_.sendTransform( tf::StampedTransform( joint_transform, ros::Time::now(), "/kinect", tf_frame_basename_ss.str() + joint_names_map[joint_msg.joint_type_] ) );
+                    transform_broadcaster_.sendTransform( tf::StampedTransform( joint_transform, ros::Time::now(), "/kinect", tf_frame_basename_ss.str() + joint_names_map.find(joint_msg.joint_type_)->second ) );
                 }
                 ros_bodies_msg.bodies.emplace_back( std::move( ros_body_msg ) );
             }
