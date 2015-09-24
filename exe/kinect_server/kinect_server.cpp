@@ -843,7 +843,7 @@ int main( int argc, char ** argv )
         {
             std::cout << "options: " << std::endl;
             std::cout << "  --listen-ip <hostname or ip>" << std::endl;
-            std::cout << "  --listne-port <port number>" << std::endl;
+            std::cout << "  --listen-port <port number>" << std::endl;
             return 0;
         }
         else if( arg == "--listen-ip" )
