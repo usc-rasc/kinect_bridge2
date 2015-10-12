@@ -865,7 +865,7 @@ int main( int argc, char ** argv )
     {
         try
         {
-            kinect_device.initialize( true, true, true, true, true );
+            kinect_device.initialize( false, false, false, false, true, true );
             break;
         }
         catch( KinectException & e )
