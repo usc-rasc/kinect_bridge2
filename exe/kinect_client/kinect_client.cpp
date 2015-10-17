@@ -176,7 +176,7 @@ public:
 
                     ros_joint_msg.orientation.x = joint_msg.orientation_.x;
                     ros_joint_msg.orientation.y = joint_msg.orientation_.y;
-                    ros_joint_msg.orientation.z = joint_msg.orientation_.x;
+                    ros_joint_msg.orientation.z = joint_msg.orientation_.z;
                     ros_joint_msg.orientation.w = joint_msg.orientation_.w;
 
                     ros_joints_msg.emplace_back( std::move( ros_joint_msg ) );
