@@ -172,7 +172,7 @@ public:
 
                     ros_joint_msg.position.x = joint_msg.position_.x;
                     ros_joint_msg.position.y = joint_msg.position_.y;
-                    ros_joint_msg.position.z = joint_msg.position_.x;
+                    ros_joint_msg.position.z = joint_msg.position_.z;
 
                     ros_joint_msg.orientation.x = joint_msg.orientation_.x;
                     ros_joint_msg.orientation.y = joint_msg.orientation_.y;
