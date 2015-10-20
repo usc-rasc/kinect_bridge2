@@ -188,7 +188,7 @@ public:
                     );
 
                     // if the rotation is nan, zero it out to make TF happy
-                    if( std::isnan( joint_transform.getRotation().getAngle() ) joint_transform.setRotation( tf::Quaternion( 0, 0, 0, 1 ) );
+                    if( std::isnan( joint_transform.getRotation().getAngle() ) ) joint_transform.setRotation( tf::Quaternion( 0, 0, 0, 1 ) );
 
                     static tf::Transform const trunk_norm_rotation_tf( tf::Quaternion( -M_PI_2, -M_PI_2, 0 ).normalized() );
 
