@@ -1071,6 +1071,7 @@ public:
 
                 if( joints_msg.size() < JointType_Count ) joints_msg.resize( JointType_Count );
                 body->GetJoints( joint_points.size(), joint_points.data() );
+                body->GetJointOrientations( joint_orientations.size(), joint_orientations.data() );
 
                 for( size_t joints_idx = 0; joints_idx < joint_points.size(); ++joints_idx )
                 {
