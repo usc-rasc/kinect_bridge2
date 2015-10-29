@@ -181,11 +181,30 @@ public:
 
                     ros_joints_msg.emplace_back( std::move( ros_joint_msg ) );
 
-                    tf::Transform const joint_transform
+                    tf::Transform joint_transform
                     (
-                        tf::Quaternion( joint_msg.orientation_.x, joint_msg.orientation_.y, joint_msg.orientation_.z, joint_msg.orientation_.w ).normalized(),
+                        joint_msg.tracking_state_ == KinectJointMessage::TrackingState::TRACKED ? tf::Quaternion( joint_msg.orientation_.x, joint_msg.orientation_.y, joint_msg.orientation_.z, joint_msg.orientation_.w ).normalized() : tf::Quaternion( 0, 0, 0, 1 ),
                         tf::Vector3( joint_msg.position_.x, joint_msg.position_.y, joint_msg.position_.z )
                     );
+
+                    // if the rotation is nan, zero it out to make TF happy
+                    if( std::isnan( joint_transform.getRotation().getAngle() ) ) joint_transform.setRotation( tf::Quaternion( 0, 0, 0, 1 ) );
+
+                    static tf::Transform const trunk_norm_rotation_tf( tf::Quaternion( -M_PI_2, -M_PI_2, 0 ).normalized() );
+
+                    switch( joint_msg.joint_type_ )
+                    {
+                    case KinectJointMessage::JointType::SPINE_BASE:
+                    case KinectJointMessage::JointType::SPINE_MID:
+                    case KinectJointMessage::JointType::NECK:
+                    case KinectJointMessage::JointType::HEAD:
+                    case KinectJointMessage::JointType::SPINE_SHOULDER:
+                        joint_transform *= trunk_norm_rotation_tf;
+                        break;
+                    default:
+                        break;
+                    }
+
                     transform_broadcaster_.sendTransform( tf::StampedTransform( joint_transform, ros::Time::now(), "/kinect", tf_frame_basename_ss.str() + joint_names_map.find(joint_msg.joint_type_)->second ) );
                 }
                 ros_bodies_msg.bodies.emplace_back( std::move( ros_body_msg ) );
